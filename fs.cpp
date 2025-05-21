@@ -1297,175 +1297,87 @@ void fs_copy(const char* src_filename, const char* dest_filename) {
 }
 
 void fs_mv(const char* old_path, const char* new_path) {
-    ensure_disk_initialized();
-    fs_log(("fs_mv called to move: '" + (old_path ? std::string(old_path) : "NULL") +
-            "' to: '" + (new_path ? std::string(new_path) : "NULL") + "'. Behaving like rename due to no directory structure.").c_str());
-
-    // Since there's no directory structure, fs_mv will behave exactly like fs_rename.
-    // We can directly call fs_rename or re-implement similar logic.
-    // For clarity and to ensure fs_mv specific logging/potential future differences,
-    // we'll re-implement the core logic similar to fs_rename.
-
-    if (old_path == nullptr || strlen(old_path) == 0) {
-        std::cerr << "Error (fs_mv): Source path cannot be empty." << std::endl;
-        fs_log("fs_mv failed: empty source path.");
-        return;
-    }
-    if (new_path == nullptr || strlen(new_path) == 0) {
-        std::cerr << "Error (fs_mv): Destination path cannot be empty." << std::endl;
-        fs_log("fs_mv failed: empty destination path.");
-        return;
-    }
-
-    if (strlen(old_path) > MAX_FILENAME_LENGTH) {
-        std::cerr << "Error (fs_mv): Source path '\"" << old_path << "\"' is too long." << std::endl;
-        fs_log("fs_mv failed: source path too long.");
-        return;
-    }
-    if (strlen(new_path) > MAX_FILENAME_LENGTH) {
-        std::cerr << "Error (fs_mv): Destination path '\"" << new_path << "\"' is too long." << std::endl;
-        fs_log("fs_mv failed: destination path too long.");
-        return;
-    }
-
-    if (strcmp(old_path, new_path) == 0) {
-        std::cout << "Info (fs_mv): Source and destination paths are the same. No action taken." << std::endl;
-        fs_log("fs_mv: Source and destination paths are identical. No operation performed.");
-        return;
-    }
-
-    Superblock sb;
-    std::vector<FileInfo> all_files = read_all_file_info(sb);
-    if (sb.num_active_files == -1) { // Metadata read error
-        fs_log("fs_mv failed: metadata read error.");
-        return;
-    }
-
-    int old_file_idx = -1;
-    bool new_path_exists = false;
-
-    for (int i = 0; i < all_files.size(); ++i) {
-        if (all_files[i].is_used) {
-            if (strcmp(all_files[i].name, old_path) == 0) {
-                old_file_idx = i;
-            }
-            if (strcmp(all_files[i].name, new_path) == 0) {
-                new_path_exists = true;
-            }
-        }
-    }
-
-    if (old_file_idx == -1) {
-        std::cerr << "Error (fs_mv): Source path '\"" << old_path << "\"' not found." << std::endl;
-        fs_log(("fs_mv failed: source path '" + std::string(old_path) + "' not found.").c_str());
-        return;
-    }
-
-    if (new_path_exists) {
-        std::cerr << "Error (fs_mv): Destination path '\"" << new_path << "\"' already exists." << std::endl;
-        fs_log(("fs_mv failed: destination path '" + std::string(new_path) + "' already exists.").c_str());
-        return;
-    }
-
-    // Update the name in FileInfo
-    strncpy(all_files[old_file_idx].name, new_path, MAX_FILENAME_LENGTH);
-    all_files[old_file_idx].name[MAX_FILENAME_LENGTH] = '\0';
-    all_files[old_file_idx].creation_time = time(nullptr); // Optionally update timestamp
-
-    // Write updated FileInfo back to disk
-    // Superblock (sb) 'num_active_files' doesn't change on rename/move.
-    if (write_file_info_at_index(old_file_idx, all_files[old_file_idx], sb)) {
-        std::cout << "File '" << old_path << "' moved/renamed to '" << new_path << "' successfully." << std::endl;
-        fs_log(("File '" + std::string(old_path) + "' moved/renamed to '" + std::string(new_path) + "'.").c_str());
-    } else {
-        std::cerr << "Error (fs_mv): Failed to update metadata for path '" << new_path << "'." << std::endl;
-        fs_log(("fs_mv failed: could not write updated FileInfo for '" + std::string(new_path) + "'.").c_str());
-        // Revert name in memory if write failed? For now, no, as the issue is disk write.
-    }
+    fs_rename(old_path, new_path); // Dizin yapımız olmadığı için şimdilik aynı işlev
 }
 
 // Bitmap Yönetimi Yardımcı Fonksiyonları
 
-// Verilen bit numarasının (0-7) byte içindeki değerini döndürür (örn: bit 0 -> 1, bit 1 -> 2, bit 7 -> 128)
+// Verilen byte içindeki belirli bir bit'in değerini kontrol etmek için maske döndürür.
+// Örn: bit_num_in_byte = 0 -> 00000001 (1)
+//      bit_num_in_byte = 7 -> 10000000 (128)
 inline unsigned char bit_to_char_mask(int bit_num_in_byte) {
     return 1 << bit_num_in_byte;
 }
 
 void free_data_block(int block_index) {
-    if (block_index < 0 || static_cast<unsigned int>(block_index) >= NUM_DATA_BLOCKS) {
-        std::cerr << "Error (free_data_block): Invalid block index " << block_index << ". Max is " << NUM_DATA_BLOCKS -1 << std::endl;
-        fs_log(("Error (free_data_block): Invalid block index " + std::to_string(block_index)).c_str());
+    if (block_index < 0 || block_index >= NUM_DATA_BLOCKS) {
+        std::cerr << "Error (free_data_block): Invalid data block index " << block_index << ". Valid range is 0-" << NUM_DATA_BLOCKS - 1 << std::endl;
+        fs_log(("free_data_block failed: invalid block index " + std::to_string(block_index)).c_str());
         return;
     }
-
-    ensure_disk_initialized();
 
     std::fstream disk_file(DISK_FILENAME, std::ios::binary | std::ios::in | std::ios::out);
     if (!disk_file) {
-        std::cerr << "Error (free_data_block): Could not open disk file '" << DISK_FILENAME << "'." << std::endl;
-        fs_log("Error (free_data_block): Could not open disk file.");
+        std::cerr << "Error: Could not open disk file '" << DISK_FILENAME << "' to free data block." << std::endl;
+        fs_log("free_data_block failed: could not open disk file.");
         return;
     }
 
-    char bitmap_buffer[BITMAP_SIZE_BYTES];
-    disk_file.seekg(BITMAP_START_OFFSET_IN_METADATA, std::ios::beg);
-    disk_file.read(bitmap_buffer, BITMAP_SIZE_BYTES);
+    std::streampos bitmap_byte_offset = BITMAP_START_OFFSET_IN_METADATA + (block_index / 8);
+    int bit_in_byte = block_index % 8;
+    unsigned char byte_val;
+
+    disk_file.seekg(bitmap_byte_offset);
+    disk_file.read(reinterpret_cast<char*>(&byte_val), 1);
+
     if (!disk_file) {
-        std::cerr << "Error (free_data_block): Could not read bitmap from disk." << std::endl;
-        fs_log("Error (free_data_block): Could not read bitmap.");
+        std::cerr << "Error: Could not read bitmap byte for block " << block_index << std::endl;
+        fs_log(("free_data_block failed: could not read bitmap for block " + std::to_string(block_index)).c_str());
         disk_file.close();
         return;
     }
 
-    unsigned int byte_index = static_cast<unsigned int>(block_index) / 8;
-    unsigned int bit_index_in_byte = static_cast<unsigned int>(block_index) % 8;
-
-    if (byte_index >= BITMAP_SIZE_BYTES) { // Güvenlik
-         std::cerr << "Error (free_data_block): calculated byte_index out of bitmap range." << std::endl;
-         fs_log("Error (free_data_block): calculated byte_index out of bitmap range.");
-         disk_file.close();
-         return;
-    }
-    
-    if (!(bitmap_buffer[byte_index] & bit_to_char_mask(bit_index_in_byte))) {
-        std::cout << "Warning (free_data_block): Block " << block_index << " was already free." << std::endl;
-        fs_log(("Warning (free_data_block): Block " + std::to_string(block_index) + " was already free.").c_str());
-        // Zaten boşsa işlem yapmaya gerek yok, ama hata da değil.
-        // return; // İsteğe bağlı: zaten boşsa çıkılabilir
-    }
-
-    bitmap_buffer[byte_index] &= ~(bit_to_char_mask(bit_index_in_byte)); // Biti 0 yap
-
-    disk_file.seekp(BITMAP_START_OFFSET_IN_METADATA, std::ios::beg);
-    disk_file.write(bitmap_buffer, BITMAP_SIZE_BYTES);
-    if (!disk_file) {
-        std::cerr << "Error (free_data_block): Could not write updated bitmap to disk." << std::endl;
-        fs_log("Error (free_data_block): Could not write updated bitmap.");
+    if (!(byte_val & bit_to_char_mask(bit_in_byte))) {
+        std::cout << "Warning (free_data_block): Data block " << block_index << " is already free." << std::endl;
+        fs_log(("free_data_block warning: block " + std::to_string(block_index) + " already free.").c_str());
         disk_file.close();
-        return;
+        return; // Zaten boşsa bir şey yapma
     }
 
+    byte_val &= ~bit_to_char_mask(bit_in_byte); // Biti sıfırla (boşalt)
+
+    disk_file.seekp(bitmap_byte_offset);
+    disk_file.write(reinterpret_cast<const char*>(&byte_val), 1);
+
+    if (!disk_file) {
+        std::cerr << "Error: Could not write updated bitmap byte for block " << block_index << std::endl;
+        fs_log(("free_data_block failed: could not write bitmap for block " + std::to_string(block_index)).c_str());
+    } else {
+        // fs_log(("Data block " + std::to_string(block_index) + " freed successfully.").c_str());
+    }
     disk_file.close();
-    fs_log(("Data block " + std::to_string(block_index) + " freed.").c_str());
-} 
+}
 
-// Belirtilen sayıda ardışık boş veri bloğu bulur, işaretler ve başlangıç indeksini döndürür.
-// Bulamazsa -1 döndürür.
+
+// Belirtilen sayıda ardışık boş veri bloğu bulur, onları bitmap'te meşgul olarak işaretler
+// ve ilk bulunan bloğun indeksini döndürür. Bulamazsa -1 döndürür.
 int find_and_allocate_contiguous_data_blocks(int num_blocks_to_find) {
     if (num_blocks_to_find <= 0) {
-        fs_log("Error (find_and_allocate_contiguous_data_blocks): Number of blocks to find must be positive.");
+        std::cerr << "Error (find_and_allocate_contiguous_data_blocks): Number of blocks to find must be positive. Requested: " << num_blocks_to_find << std::endl;
+        fs_log(("find_and_allocate_contiguous_data_blocks failed: non-positive num_blocks_to_find: " + std::to_string(num_blocks_to_find)).c_str());
         return -1;
     }
-    if (static_cast<unsigned int>(num_blocks_to_find) > NUM_DATA_BLOCKS) {
-        fs_log("Error (find_and_allocate_contiguous_data_blocks): Requested more blocks than available on disk.");
+    if (num_blocks_to_find > NUM_DATA_BLOCKS) {
+         std::cerr << "Error (find_and_allocate_contiguous_data_blocks): Requested " << num_blocks_to_find << " blocks, but only " << NUM_DATA_BLOCKS << " total data blocks exist." << std::endl;
+         fs_log(("find_and_allocate_contiguous_data_blocks failed: requested more blocks than exist: " + std::to_string(num_blocks_to_find)).c_str());
         return -1;
     }
 
-    ensure_disk_initialized();
+
     std::fstream disk_file(DISK_FILENAME, std::ios::binary | std::ios::in | std::ios::out);
     if (!disk_file) {
-        std::cerr << "Error (find_and_allocate_contiguous_data_blocks): Could not open disk file '" << DISK_FILENAME << "'." << std::endl;
-        fs_log("Error (find_and_allocate_contiguous_data_blocks): Could not open disk file.");
+        std::cerr << "Error: Could not open disk file '" << DISK_FILENAME << "' for find_and_allocate_contiguous_data_blocks." << std::endl;
+        fs_log("find_and_allocate_contiguous_data_blocks failed: could not open disk file.");
         return -1;
     }
 
@@ -1473,116 +1385,119 @@ int find_and_allocate_contiguous_data_blocks(int num_blocks_to_find) {
     disk_file.seekg(BITMAP_START_OFFSET_IN_METADATA, std::ios::beg);
     disk_file.read(bitmap_buffer, BITMAP_SIZE_BYTES);
     if (!disk_file) {
-        std::cerr << "Error (find_and_allocate_contiguous_data_blocks): Could not read bitmap from disk." << std::endl;
-        fs_log("Error (find_and_allocate_contiguous_data_blocks): Could not read bitmap.");
+        std::cerr << "Error: Could not read bitmap from disk (find_and_allocate_contiguous_data_blocks)." << std::endl;
+        fs_log("find_and_allocate_contiguous_data_blocks failed: could not read bitmap.");
         disk_file.close();
         return -1;
     }
 
-    for (unsigned int start_block_idx = 0; start_block_idx <= NUM_DATA_BLOCKS - num_blocks_to_find; ++start_block_idx) {
-        bool all_contiguous_blocks_free = true;
+    for (int start_block_idx = 0; start_block_idx <= NUM_DATA_BLOCKS - num_blocks_to_find; ++start_block_idx) {
+        bool all_free = true;
         for (int i = 0; i < num_blocks_to_find; ++i) {
-            unsigned int current_block_idx = start_block_idx + i;
-            unsigned int byte_index = current_block_idx / 8;
-            unsigned int bit_index_in_byte = current_block_idx % 8;
+            int current_block_idx = start_block_idx + i;
+            int byte_index_in_bitmap = current_block_idx / 8;
+            int bit_index_in_byte = current_block_idx % 8;
 
-            if (bitmap_buffer[byte_index] & bit_to_char_mask(bit_index_in_byte)) { // Eğer blok doluysa (bit 1 ise)
-                all_contiguous_blocks_free = false;
-                break; 
+            if (bitmap_buffer[byte_index_in_bitmap] & bit_to_char_mask(bit_index_in_byte)) {
+                all_free = false; // Bu blok dolu, sonraki başlangıçtan devam et
+                start_block_idx = current_block_idx; // Optimizasyon: Direkt dolu bloğun sonrasından başla
+                break;
             }
         }
 
-        if (all_contiguous_blocks_free) {
+        if (all_free) {
+            // İstenen sayıda ardışık boş blok bulundu. Şimdi bunları işaretleyelim.
             for (int i = 0; i < num_blocks_to_find; ++i) {
-                unsigned int block_to_allocate = start_block_idx + i;
-                unsigned int byte_index = block_to_allocate / 8;
-                unsigned int bit_index_in_byte = block_to_allocate % 8;
-                bitmap_buffer[byte_index] |= bit_to_char_mask(bit_index_in_byte); // Biti 1 yap
+                int block_to_allocate = start_block_idx + i;
+                int byte_idx = block_to_allocate / 8;
+                int bit_idx = block_to_allocate % 8;
+                bitmap_buffer[byte_idx] |= bit_to_char_mask(bit_idx); // Biti 1 yap (meşgul)
             }
-
+            // Güncellenmiş bitmap'i diske yaz
             disk_file.seekp(BITMAP_START_OFFSET_IN_METADATA, std::ios::beg);
             disk_file.write(bitmap_buffer, BITMAP_SIZE_BYTES);
             if (!disk_file) {
-                std::cerr << "Error (find_and_allocate_contiguous_data_blocks): Could not write updated bitmap to disk." << std::endl;
-                fs_log("Error (find_and_allocate_contiguous_data_blocks): Could not write updated bitmap.");
+                std::cerr << "Error: Could not write updated bitmap to disk after allocating blocks (find_and_allocate_contiguous_data_blocks)." << std::endl;
+                fs_log("find_and_allocate_contiguous_data_blocks failed: could not write updated bitmap.");
                 disk_file.close();
-                return -1; 
+                return -1; // Yazma hatası
             }
-
             disk_file.close();
-            fs_log(("Contiguous data blocks from " + std::to_string(start_block_idx) + " to " + std::to_string(start_block_idx + num_blocks_to_find - 1) + " allocated.").c_str());
-            return static_cast<int>(start_block_idx);
+            // fs_log(("Allocated " + std::to_string(num_blocks_to_find) + " contiguous blocks starting from " + std::to_string(start_block_idx)).c_str());
+            return start_block_idx;
         }
     }
 
     disk_file.close();
-    fs_log(("Warning (find_and_allocate_contiguous_data_blocks): No " + std::to_string(num_blocks_to_find) + " contiguous free data blocks available.").c_str());
-    return -1;
+    // fs_log(("Could not find " + std::to_string(num_blocks_to_find) + " contiguous free data blocks.").c_str());
+    return -1; // Yeterli ardışık boş blok bulunamadı
 }
 
+// Bitmap'i tarar, ilk boş veri bloğunu bulur, onu meşgul olarak işaretler
+// ve blok indeksini döndürür. Boş blok yoksa -1 döndürür.
 int find_free_data_block() {
-    ensure_disk_initialized(); 
-
     std::fstream disk_file(DISK_FILENAME, std::ios::binary | std::ios::in | std::ios::out);
     if (!disk_file) {
-        std::cerr << "Error (find_free_data_block): Could not open disk file '" << DISK_FILENAME << "'." << std::endl;
-        fs_log("Error (find_free_data_block): Could not open disk file.");
-        return -1; 
+        std::cerr << "Error: Could not open disk file '" << DISK_FILENAME << "' to find free data block." << std::endl;
+        fs_log("find_free_data_block failed: could not open disk file.");
+        return -1;
     }
 
-    char bitmap_buffer[BITMAP_SIZE_BYTES];
+    // Bitmap'i oku
+    char bitmap[BITMAP_SIZE_BYTES];
     disk_file.seekg(BITMAP_START_OFFSET_IN_METADATA, std::ios::beg);
-    disk_file.read(bitmap_buffer, BITMAP_SIZE_BYTES);
+    disk_file.read(bitmap, BITMAP_SIZE_BYTES);
+
     if (!disk_file) {
-        std::cerr << "Error (find_free_data_block): Could not read bitmap from disk." << std::endl;
-        fs_log("Error (find_free_data_block): Could not read bitmap.");
+        std::cerr << "Error: Could not read bitmap from metadata (find_free_data_block)." << std::endl;
+        fs_log("find_free_data_block failed: could not read bitmap.");
         disk_file.close();
         return -1;
     }
 
-    for (unsigned int block_idx = 0; block_idx < NUM_DATA_BLOCKS; ++block_idx) {
-        unsigned int byte_index = block_idx / 8;
-        unsigned int bit_index_in_byte = block_idx % 8;
+    for (int i = 0; i < NUM_DATA_BLOCKS; ++i) {
+        int byte_index = i / 8;
+        int bit_index_in_byte = i % 8; // Düzeltildi: bit_in_byte -> bit_index_in_byte
 
-        if (byte_index >= BITMAP_SIZE_BYTES) { 
-            std::cerr << "Error (find_free_data_block): block_idx out of bitmap range." << std::endl;
-            fs_log("Error (find_free_data_block): block_idx out of bitmap range.");
-            disk_file.close();
-            return -1; 
-        }
+        if (!(bitmap[byte_index] & bit_to_char_mask(bit_index_in_byte))) {
+            // Boş blok bulundu (bit 0). Onu 1 yap (meşgul) ve diske yaz.
+            bitmap[byte_index] |= bit_to_char_mask(bit_index_in_byte);
+            
+            disk_file.seekp(BITMAP_START_OFFSET_IN_METADATA + byte_index, std::ios::beg);
+            disk_file.write(&bitmap[byte_index], 1); // Sadece değişen byte'ı yaz
 
-        if (!(bitmap_buffer[byte_index] & bit_to_char_mask(bit_index_in_byte))) {
-            bitmap_buffer[byte_index] |= bit_to_char_mask(bit_index_in_byte);
-
-            disk_file.seekp(BITMAP_START_OFFSET_IN_METADATA, std::ios::beg);
-            disk_file.write(bitmap_buffer, BITMAP_SIZE_BYTES);
             if (!disk_file) {
-                std::cerr << "Error (find_free_data_block): Could not write updated bitmap to disk." << std::endl;
-                fs_log("Error (find_free_data_block): Could not write updated bitmap.");
+                std::cerr << "Error: Could not write updated bitmap to metadata (find_free_data_block)." << std::endl;
+                fs_log("find_free_data_block failed: could not write updated bitmap.");
                 disk_file.close();
-                return -1; 
+                return -1; // Yazma hatası
             }
-
             disk_file.close();
-            fs_log(("Data block " + std::to_string(block_idx) + " allocated.").c_str());
-            return static_cast<int>(block_idx);
+            // fs_log(("Data block " + std::to_string(i) + " allocated.").c_str());
+            return i; // Bulunan boş bloğun indeksini döndür
         }
     }
 
     disk_file.close();
-    std::cout << "Warning (find_free_data_block): No free data blocks available. Disk might be full." << std::endl;
-    fs_log("Warning (find_free_data_block): No free data blocks available.");
-    return -1; 
+    // fs_log("No free data block found.");
+    return -1; // Boş blok bulunamadı
 }
 
+// ------------- LOGLAMA YARDIMCI FONKSİYONU -------------
 void fs_log(const char* message) {
-    time_t now = time(0);
-    char* dt = ctime(&now);
-    if (dt[strlen(dt) - 1] == '\n') {
-        dt[strlen(dt) - 1] = '\0';
+    std::ofstream log_file(LOG_FILENAME, std::ios_base::app); // Append modunda aç
+    if (log_file.is_open()) {
+        // Zaman damgası ekleyebiliriz (isteğe bağlı)
+        // time_t now = time(0);
+        // tm *ltm = localtime(&now);
+        // log_file << 1900 + ltm->tm_year << "/" << 1 + ltm->tm_mon << "/" << ltm->tm_mday << " ";
+        // log_file << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << " - ";
+        log_file << message << std::endl;
+        log_file.close();
+    } else {
+        std::cerr << "Warning: Unable to open log file: " << LOG_FILENAME << std::endl;
     }
-    std::cout << "[LOG " << dt << "] " << message << std::endl;
-} 
+}
 
 // Superblock'tan aktif dosya sayısını okumak için yardımcı fonksiyon
 int fs_count_active_files() {
@@ -2001,4 +1916,198 @@ void fs_check_integrity() {
         fs_log(("File system integrity check FAILED. Issues found: " + std::to_string(issues_found)).c_str());
     }
     // Fonksiyon bir bool döndürmüyor, sadece logluyor.
+}
+
+int fs_backup(const char* backup_filename) {
+    ensure_disk_initialized(); // Ana diskimizin var olduğundan emin olalım
+    fs_log(("Backup process started. Target backup file: '" + std::string(backup_filename) + "'").c_str());
+
+    if (backup_filename == nullptr || strlen(backup_filename) == 0) {
+        fs_log("fs_backup ERROR: Backup filename cannot be null or empty.");
+        std::cerr << "Error (fs_backup): Backup filename cannot be null or empty." << std::endl;
+        return -1; // Hata kodu: Geçersiz backup dosya adı
+    }
+
+    std::ifstream source_disk(DISK_FILENAME, std::ios::binary);
+    if (!source_disk) {
+        fs_log(("fs_backup CRITICAL: Could not open source disk file '" + std::string(DISK_FILENAME) + "' for reading.").c_str());
+        std::cerr << "Error (fs_backup): Could not open source disk file '" << DISK_FILENAME << "' for reading." << std::endl;
+        return -2; // Hata kodu: Kaynak disk açılamadı
+    }
+
+    std::ofstream backup_file(backup_filename, std::ios::binary | std::ios::trunc);
+    if (!backup_file) {
+        fs_log(("fs_backup ERROR: Could not create or open backup file '" + std::string(backup_filename) + "' for writing.").c_str());
+        std::cerr << "Error (fs_backup): Could not create or open backup file '" << backup_filename << "' for writing." << std::endl;
+        source_disk.close();
+        return -3; // Hata kodu: Backup dosyası oluşturulamadı/açılamadı
+    }
+
+    char buffer[1024]; 
+    while (source_disk.read(buffer, sizeof(buffer)) || source_disk.gcount() > 0) {
+        backup_file.write(buffer, source_disk.gcount());
+        if (!backup_file) {
+            fs_log(("fs_backup ERROR: Failed to write to backup file '" + std::string(backup_filename) + "'.").c_str());
+            std::cerr << "Error (fs_backup): Failed to write to backup file '" << backup_filename << "'." << std::endl;
+            source_disk.close();
+            backup_file.close();
+            // remove(backup_filename); // İsteğe bağlı, yarım dosyayı sil
+            return -4; // Hata kodu: Backup dosyasına yazma hatası
+        }
+    }
+
+    int return_code = 0; // Başarılı varsayalım
+    if (source_disk.eof()) { 
+        fs_log(("Backup of '" + std::string(DISK_FILENAME) + "' to '" + std::string(backup_filename) + "' completed successfully.").c_str());
+        std::cout << "Disk backup completed successfully to '" << backup_filename << "'." << std::endl;
+        // return_code = 0; // Zaten 0
+    } else if (source_disk.fail()) { 
+        fs_log(("fs_backup ERROR: Failed to read from source disk '" + std::string(DISK_FILENAME) + "' before EOF.").c_str());
+        std::cerr << "Error (fs_backup): Failed to read from source disk '" << DISK_FILENAME << "'." << std::endl;
+        // remove(backup_filename); // İsteğe bağlı, yarım dosyayı sil
+        return_code = -5; // Hata kodu: Kaynak diskten okuma hatası
+    }
+
+    source_disk.close();
+    backup_file.close();
+    return return_code;
+}
+
+// Geri yükleme fonksiyonu
+void fs_restore(const char* backup_filename) {
+    if (backup_filename == nullptr || strlen(backup_filename) == 0) {
+        fs_log("fs_restore ERROR: Backup filename cannot be null or empty.");
+        std::cerr << "Error (fs_restore): Backup filename cannot be null or empty." << std::endl;
+        return; // Hata kodu döndürmek yerine sadece return ediyoruz (fonksiyon void olduğu için)
+    }
+
+    ensure_disk_initialized(); // Ana diskimizin var olduğundan emin olmak için fs_init mantığı, ama formatlamaz
+    fs_log(("Restore process started from backup file: '" + std::string(backup_filename) + "'").c_str());
+
+    // if (backup_filename == nullptr || strlen(backup_filename) == 0) { // Bu kontrol yukarıya taşındı
+    //     fs_log("fs_restore ERROR: Backup filename cannot be null or empty.");
+    //     std::cerr << "Error (fs_restore): Backup filename cannot be null or empty." << std::endl;
+    //     return; // Veya hata kodu
+    // }
+
+    std::ifstream backup_source(backup_filename, std::ios::binary);
+    if (!backup_source) {
+        fs_log(("fs_restore CRITICAL: Could not open backup file '" + std::string(backup_filename) + "' for reading.").c_str());
+        std::cerr << "Error (fs_restore): Could not open backup file '" << backup_filename << "' for reading." << std::endl;
+        return;
+    }
+
+    // Hedef disk dosyasını (disk.sim) yazmak üzere aç (truncate etmeli)
+    std::ofstream target_disk(DISK_FILENAME, std::ios::binary | std::ios::trunc);
+    if (!target_disk) {
+        fs_log(("fs_restore CRITICAL: Could not open/create target disk file '" + std::string(DISK_FILENAME) + "' for writing.").c_str());
+        std::cerr << "Error (fs_restore): Could not open/create target disk file '" << DISK_FILENAME << "' for writing." << std::endl;
+        backup_source.close();
+        return;
+    }
+
+    target_disk << backup_source.rdbuf(); // Tüm içeriği kopyala
+
+    bool success_restore = true;
+    if (!target_disk.good()) {
+        fs_log(("fs_restore ERROR: Error occurred while writing to target disk file '" + std::string(DISK_FILENAME) + "'.").c_str());
+        std::cerr << "Error (fs_restore): Error occurred while writing to target disk file '" << DISK_FILENAME << "'." << std::endl;
+        success_restore = false;
+    }
+
+    backup_source.close();
+    target_disk.close();
+
+    if (success_restore) {
+        fs_log(("Restore process completed successfully from '" + std::string(backup_filename) + "' to '" + std::string(DISK_FILENAME) + "'.").c_str());
+        std::cout << "Disk restore successful from: " << backup_filename << " to: " << DISK_FILENAME << std::endl;
+        // Geri yükleme sonrası FS'nin tutarlı olması için ek kontroller veya fs_check_integrity() çağrılabilir.
+        // Örneğin, superblock'taki dosya sayısı ve bitmap tutarlı mı?
+        fs_log("Running integrity check after restore...");
+        fs_check_integrity(); // Yedekten sonra bir kontrol iyi olabilir.
+    } else {
+        // Hata durumunda, disk.sim dosyası bozulmuş olabilir. Eski haline getirmek zor.
+        // Kullanıcıya bilgi verilmeli.
+        fs_log(("fs_restore CRITICAL ERROR: Restore failed. Disk file \\\'" + std::string(DISK_FILENAME) + "\\\' may be corrupted.").c_str());
+        std::cerr << "CRITICAL ERROR (fs_restore): Restore failed. Disk file \\\'" << DISK_FILENAME << "\\\' may be corrupted." << std::endl;
+    }
+}
+
+int fs_diff(const char* filename1, const char* filename2) {
+    ensure_disk_initialized();
+    fs_log(("fs_diff called for files: \\\'" + (filename1 ? std::string(filename1) : "NULL") + "\\\' and \\\'" + (filename2 ? std::string(filename2) : "NULL") + "\\\'.").c_str());
+
+    if (filename1 == nullptr || strlen(filename1) == 0 || filename2 == nullptr || strlen(filename2) == 0) {
+        std::cerr << "Error (fs_diff): Filenames cannot be null or empty." << std::endl;
+        fs_log("fs_diff failed: one or both filenames are null or empty.");
+        return -1; // Hata kodu: Geçersiz dosya adı
+    }
+
+    if (strcmp(filename1, filename2) == 0) {
+        fs_log("fs_diff: Filenames are identical. Files are considered the same.");
+        return 0; // Aynı dosya adları, aynı kabul edilir.
+    }
+
+    if (!fs_exists(filename1)) {
+        std::cerr << "Error (fs_diff): File \\\'" << filename1 << "\\\' not found." << std::endl;
+        fs_log(("fs_diff failed: file1 not found - " + std::string(filename1)).c_str());
+        return -2; // Hata kodu: İlk dosya yok
+    }
+    if (!fs_exists(filename2)) {
+        std::cerr << "Error (fs_diff): File \\\'" << filename2 << "\\\' not found." << std::endl;
+        fs_log(("fs_diff failed: file2 not found - " + std::string(filename2)).c_str());
+        return -3; // Hata kodu: İkinci dosya yok
+    }
+
+    int size1 = fs_size(filename1);
+    int size2 = fs_size(filename2);
+
+    if (size1 < 0 || size2 < 0) {
+        std::cerr << "Error (fs_diff): Could not determine size of one or both files." << std::endl;
+        fs_log("fs_diff failed: could not get size for one or both files.");
+        return -4; // Hata kodu: Boyut okuma hatası
+    }
+
+    if (size1 != size2) {
+        fs_log("fs_diff: Files have different sizes. Considered different.");
+        return 1; // Farklı boyutlar, farklı kabul edilir.
+    }
+
+    // Boyutlar aynı ve 0 ise, dosyalar aynıdır.
+    if (size1 == 0) {
+        fs_log("fs_diff: Both files are empty. Considered the same.");
+        return 0; 
+    }
+
+    // Boyutlar aynı ve 0'dan büyükse, içerikleri karşılaştır.
+    char* buffer1 = new (std::nothrow) char[size1];
+    char* buffer2 = new (std::nothrow) char[size1]; // size1 == size2
+
+    if (!buffer1 || !buffer2) {
+        std::cerr << "Error (fs_diff): Memory allocation failed for buffers." << std::endl;
+        fs_log("fs_diff failed: memory allocation error for buffers.");
+        if (buffer1) delete[] buffer1;
+        if (buffer2) delete[] buffer2;
+        return -5; // Hata kodu: Bellek hatası
+    }
+
+    fs_read(filename1, 0, size1, buffer1);
+    // fs_read kendi hatalarını loglar. Eğer buffer1 boş gelirse, bu bir okuma hatasıdır.
+    // Ancak fs_read void olduğu için dönüş değerinden kontrol edemiyoruz.
+    // fs_size kontrolü sonrası buraya gelindiği için dosya var ve boyutu biliniyor.
+
+    fs_read(filename2, 0, size2, buffer2); // size1 == size2
+
+    int diff_result = memcmp(buffer1, buffer2, size1);
+
+    delete[] buffer1;
+    delete[] buffer2;
+
+    if (diff_result == 0) {
+        fs_log("fs_diff: File contents are identical.");
+        return 0; // İçerikler aynı
+    } else {
+        fs_log("fs_diff: File contents are different.");
+        return 1; // İçerikler farklı
+    }
 }

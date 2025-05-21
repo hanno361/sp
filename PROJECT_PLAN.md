@@ -74,14 +74,14 @@ Bu proje, C++ dilinde sistem çağrıları kullanılarak basit bir dosya sistemi
     - [x] Test Edildi
 - [x] `fs_check_integrity()`: Metadata ve veri blokları tutarlılığını kontrol etme.
     - [x] Test Edildi
-- [ ] `fs_backup(char* backup_filename)`: Disk yedeği alma.
-    - [ ] Test Edildi
+- [x] `fs_backup(char* backup_filename)`: Disk yedeği alma.
+    - [x] Test Edildi
 - [ ] `fs_restore(char* backup_filename)`: Disk yedeğini geri yükleme.
-    - [ ] Test Edildi
-- [ ] `fs_diff(char* file1, char* file2)`: İki dosyayı karşılaştırma.
-    - [ ] Test Edildi
+    - [x] Test Edildi
+- [x] `fs_diff(char* file1, char* file2)`: İki dosyayı karşılaştırma.
+    - [x] Test Edildi
 - [ ] `fs_log()`: Yapılan işlemleri loglama.
-    - [ ] Test Edildi
+    - [x] Test Edildi
 
 ### Aşama 6: Kullanıcı Arayüzü
 - [ ] `main.cpp` içinde konsol tabanlı menü oluşturma.

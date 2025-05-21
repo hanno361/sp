@@ -9,6 +9,7 @@
 // Disk ve Blok Sabitleri
 const unsigned int BLOCK_SIZE_BYTES = 512;           // Örnek: 512 Bytes
 const char DISK_FILENAME[] = "disk.sim";
+const char LOG_FILENAME[] = "fs.log"; // Log dosyası adı eklendi
 const unsigned int DISK_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
 
 // Metadata Alanı Sabitleri
@@ -62,6 +63,8 @@ const unsigned int FILE_INFO_ARRAY_START_OFFSET_IN_METADATA = SUPERBLOCK_ACTUAL_
 const unsigned int FILE_INFO_ARRAY_USABLE_SIZE = (METADATA_AREA_SIZE_BYTES > FILE_INFO_ARRAY_START_OFFSET_IN_METADATA) ? (METADATA_AREA_SIZE_BYTES - FILE_INFO_ARRAY_START_OFFSET_IN_METADATA) : 0;
 const int MAX_FILES_CALCULATED = (FILE_INFO_ARRAY_USABLE_SIZE > 0 && FILE_INFO_ENTRY_SIZE > 0) ? (FILE_INFO_ARRAY_USABLE_SIZE / FILE_INFO_ENTRY_SIZE) : 0;
 
+// Kullanıcı arayüzü için tampon boyutları
+const int MAX_FILE_SIZE_FOR_USER_INPUT = 4 * 1024; // Kullanıcının tek seferde girebileceği/okuyabileceği maks. veri (4KB)
 
 // Fonksiyon Bildirimleri
 void fs_init(); // Diski başlatır, yoksa oluşturur
@@ -80,10 +83,10 @@ void fs_copy(const char* src_filename, const char* dest_filename);
 void fs_mv(const char* old_path, const char* new_path);
 void fs_defragment();
 void fs_check_integrity();
-void fs_backup(const char* backup_filename);
+int fs_backup(const char* backup_filename);
 void fs_restore(const char* backup_filename);
 void fs_cat(const char* filename);
-bool fs_diff(const char* file1, const char* file2);
+int fs_diff(const char* filename1, const char* filename2);
 void fs_log(const char* message); // Loglama için basit bir fonksiyon
 
 // Debug/Test için yardımcı fonksiyon

@@ -1,0 +1,481 @@
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'file1_bak.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file1_bak.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 34 bytes to file file1_bak.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file1_bak.txt, new size: 34, blocks used: 1, start_block: 0
+File 'file2_bak.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file2_bak.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 39 bytes to file file2_bak.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file2_bak.txt, new size: 39, blocks used: 1, start_block: 1
+fs_ls executed.
+Backup process started. Target backup file: 'disk.backup'
+Backup of 'disk.sim' to 'disk.backup' completed successfully.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+fs_ls executed.
+Backup process started. Target backup file: 'disk.backup'
+Backup of 'disk.sim' to 'disk.backup' completed successfully.
+Backup process started. Target backup file: 'non_existent_dir/mybackup.bak'
+fs_backup ERROR: Could not create or open backup file 'non_existent_dir/mybackup.bak' for writing.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'overwrite_src.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: overwrite_src.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 41 bytes to file overwrite_src.txt. Blocks used for writing: 1
+fs_write completed successfully for file: overwrite_src.txt, new size: 41, blocks used: 1, start_block: 0
+Backup process started. Target backup file: 'disk.backup'
+Backup of 'disk.sim' to 'disk.backup' completed successfully.
+fs_delete called for file: overwrite_src.txt
+fs_delete: Freeing 1 data blocks for file 'overwrite_src.txt' starting from block 0
+File 'overwrite_src.txt' deleted successfully. Active files: 0
+File 'new_content_for_overwrite.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: new_content_for_overwrite.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 59 bytes to file new_content_for_overwrite.txt. Blocks used for writing: 1
+fs_write completed successfully for file: new_content_for_overwrite.txt, new size: 59, blocks used: 1, start_block: 0
+fs_ls executed.
+Backup process started. Target backup file: 'disk.backup'
+Backup of 'disk.sim' to 'disk.backup' completed successfully.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'file_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 30 bytes to file file_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file_A.txt, new size: 30, blocks used: 1, start_block: 0
+File 'file_B.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file_B.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 18 bytes to file file_B.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file_B.txt, new size: 18, blocks used: 1, start_block: 1
+fs_ls executed.
+Backup process started. Target backup file: 'disk_for_restore.backup'
+Backup of 'disk.sim' to 'disk_for_restore.backup' completed successfully.
+fs_delete called for file: file_A.txt
+fs_delete: Freeing 1 data blocks for file 'file_A.txt' starting from block 0
+File 'file_A.txt' deleted successfully. Active files: 1
+File 'file_C.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file_C.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 11 bytes to file file_C.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file_C.txt, new size: 11, blocks used: 1, start_block: 0
+fs_rename called for file: 'file_B.txt' to new name: 'renamed_B.txt'.
+File 'file_B.txt' renamed to 'renamed_B.txt' successfully.
+fs_ls executed.
+Restore process started from backup file: 'disk_for_restore.backup'
+Restore process completed successfully from 'disk_for_restore.backup' to 'disk.sim'.
+Running integrity check after restore...
+File system integrity check started.
+File system integrity check passed. No issues found.
+fs_ls executed.
+fs_exists check for 'file_A.txt' -> true.
+fs_size for 'file_A.txt' -> 30.
+fs_exists check for 'file_B.txt' -> true.
+fs_size for 'file_B.txt' -> 18.
+fs_exists check for 'file_C.txt' -> false.
+fs_exists check for 'renamed_B.txt' -> false.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'before_restore_attempt.txt' created.
+Restore process started from backup file: 'no_such_backup.bak'
+fs_restore CRITICAL: Could not open backup file 'no_such_backup.bak' for reading.
+fs_exists check for 'before_restore_attempt.txt' -> true.
+fs_delete called for file: before_restore_attempt.txt
+File 'before_restore_attempt.txt' deleted successfully. Active files: 0
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'backup_content1.dat' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: backup_content1.dat
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 5 bytes to file backup_content1.dat. Blocks used for writing: 1
+fs_write completed successfully for file: backup_content1.dat, new size: 5, blocks used: 1, start_block: 0
+File 'backup_content2.dat' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: backup_content2.dat
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 12 bytes to file backup_content2.dat. Blocks used for writing: 1
+fs_write completed successfully for file: backup_content2.dat, new size: 12, blocks used: 1, start_block: 1
+Backup process started. Target backup file: 'disk_for_restore.backup'
+Backup of 'disk.sim' to 'disk_for_restore.backup' completed successfully.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+fs_ls executed.
+Restore process started from backup file: 'disk_for_restore.backup'
+Restore process completed successfully from 'disk_for_restore.backup' to 'disk.sim'.
+Running integrity check after restore...
+File system integrity check started.
+File system integrity check passed. No issues found.
+fs_ls executed.
+fs_exists check for 'backup_content1.dat' -> true.
+fs_exists check for 'backup_content2.dat' -> true.
+fs_size for 'backup_content2.dat' -> 12.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'file_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 30 bytes to file file_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file_A.txt, new size: 30, blocks used: 1, start_block: 0
+File 'file_B.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file_B.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 18 bytes to file file_B.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file_B.txt, new size: 18, blocks used: 1, start_block: 1
+fs_ls executed.
+Backup process started. Target backup file: 'disk_for_restore.backup'
+Backup of 'disk.sim' to 'disk_for_restore.backup' completed successfully.
+fs_delete called for file: file_A.txt
+fs_delete: Freeing 1 data blocks for file 'file_A.txt' starting from block 0
+File 'file_A.txt' deleted successfully. Active files: 1
+File 'file_C.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: file_C.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 11 bytes to file file_C.txt. Blocks used for writing: 1
+fs_write completed successfully for file: file_C.txt, new size: 11, blocks used: 1, start_block: 0
+fs_rename called for file: 'file_B.txt' to new name: 'renamed_B.txt'.
+File 'file_B.txt' renamed to 'renamed_B.txt' successfully.
+fs_ls executed.
+Restore process started from backup file: 'disk_for_restore.backup'
+Restore process completed successfully from 'disk_for_restore.backup' to 'disk.sim'.
+Running integrity check after restore...
+File system integrity check started.
+File system integrity check passed. No issues found.
+fs_ls executed.
+fs_exists check for 'file_A.txt' -> true.
+fs_size for 'file_A.txt' -> 30.
+fs_exists check for 'file_B.txt' -> true.
+fs_size for 'file_B.txt' -> 18.
+fs_exists check for 'file_C.txt' -> false.
+fs_exists check for 'renamed_B.txt' -> false.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'before_restore_attempt.txt' created.
+Restore process started from backup file: 'no_such_backup.bak'
+fs_restore CRITICAL: Could not open backup file 'no_such_backup.bak' for reading.
+fs_exists check for 'before_restore_attempt.txt' -> true.
+fs_delete called for file: before_restore_attempt.txt
+File 'before_restore_attempt.txt' deleted successfully. Active files: 0
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'backup_content1.dat' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: backup_content1.dat
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 5 bytes to file backup_content1.dat. Blocks used for writing: 1
+fs_write completed successfully for file: backup_content1.dat, new size: 5, blocks used: 1, start_block: 0
+File 'backup_content2.dat' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: backup_content2.dat
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 12 bytes to file backup_content2.dat. Blocks used for writing: 1
+fs_write completed successfully for file: backup_content2.dat, new size: 12, blocks used: 1, start_block: 1
+Backup process started. Target backup file: 'disk_for_restore.backup'
+Backup of 'disk.sim' to 'disk_for_restore.backup' completed successfully.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+fs_ls executed.
+Restore process started from backup file: 'disk_for_restore.backup'
+Restore process completed successfully from 'disk_for_restore.backup' to 'disk.sim'.
+Running integrity check after restore...
+File system integrity check started.
+File system integrity check passed. No issues found.
+fs_ls executed.
+fs_exists check for 'backup_content1.dat' -> true.
+fs_exists check for 'backup_content2.dat' -> true.
+fs_size for 'backup_content2.dat' -> 12.
+fs_restore ERROR: Backup filename cannot be null or empty.
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+fs_delete called for file: diff_A.txt
+fs_delete failed: file not found - diff_A.txt
+fs_delete called for file: diff_B.txt
+fs_delete failed: file not found - diff_B.txt
+fs_delete called for file: diff_C.txt
+fs_delete failed: file not found - diff_C.txt
+fs_delete called for file: diff_D_empty.txt
+fs_delete failed: file not found - diff_D_empty.txt
+fs_delete called for file: diff_E_empty.txt
+fs_delete failed: file not found - diff_E_empty.txt
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_B.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_B.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 25 bytes to file diff_B.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_B.txt, new size: 25, blocks used: 1, start_block: 1
+fs_diff called for files: \'diff_A.txt\' and \'diff_B.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_B.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_B.txt' -> 25.
+fs_read called for file: diff_A.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_A.txt' (requested: 25, offset: 0).
+fs_read called for file: diff_B.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_B.txt' (requested: 25, offset: 0).
+fs_diff: File contents are identical.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_B.txt
+fs_delete: Freeing 1 data blocks for file 'diff_B.txt' starting from block 1
+File 'diff_B.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_B.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_B.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 25 bytes to file diff_B.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_B.txt, new size: 25, blocks used: 1, start_block: 1
+fs_diff called for files: \'diff_A.txt\' and \'diff_B.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_B.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_B.txt' -> 25.
+fs_read called for file: diff_A.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_A.txt' (requested: 25, offset: 0).
+fs_read called for file: diff_B.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_B.txt' (requested: 25, offset: 0).
+fs_diff: File contents are different.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_B.txt
+fs_delete: Freeing 1 data blocks for file 'diff_B.txt' starting from block 1
+File 'diff_B.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_C.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_C.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 14 bytes to file diff_C.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_C.txt, new size: 14, blocks used: 1, start_block: 1
+fs_diff called for files: \'diff_A.txt\' and \'diff_C.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_C.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_C.txt' -> 14.
+fs_diff: Files have different sizes. Considered different.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_C.txt
+fs_delete: Freeing 1 data blocks for file 'diff_C.txt' starting from block 1
+File 'diff_C.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 4 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 4, blocks used: 1, start_block: 0
+fs_diff called for files: \'diff_A.txt\' and \'non_existent_file.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'non_existent_file.txt' -> false.
+fs_diff failed: file2 not found - non_existent_file.txt
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 0
+fs_diff called for files: \'nope1.txt\' and \'nope2.txt\'.
+fs_exists check for 'nope1.txt' -> false.
+fs_diff failed: file1 not found - nope1.txt
+File 'diff_D_empty.txt' created.
+File 'diff_E_empty.txt' created.
+fs_diff called for files: \'diff_D_empty.txt\' and \'diff_E_empty.txt\'.
+fs_exists check for 'diff_D_empty.txt' -> true.
+fs_exists check for 'diff_E_empty.txt' -> true.
+fs_size for 'diff_D_empty.txt' -> 0.
+fs_size for 'diff_E_empty.txt' -> 0.
+fs_diff: Both files are empty. Considered the same.
+fs_delete called for file: diff_D_empty.txt
+File 'diff_D_empty.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_E_empty.txt
+File 'diff_E_empty.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_D_empty.txt' created.
+fs_diff called for files: \'diff_A.txt\' and \'diff_D_empty.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_D_empty.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_D_empty.txt' -> 0.
+fs_diff: Files have different sizes. Considered different.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_D_empty.txt
+File 'diff_D_empty.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+fs_diff called for files: \'diff_A.txt\' and \'diff_A.txt\'.
+fs_diff: Filenames are identical. Files are considered the same.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 4 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 4, blocks used: 1, start_block: 0
+fs_diff called for files: \'NULL\' and \'diff_A.txt\'.
+fs_diff failed: one or both filenames are null or empty.
+fs_diff called for files: \'diff_A.txt\' and \'\'.
+fs_diff failed: one or both filenames are null or empty.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 0
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+fs_delete called for file: diff_A.txt
+fs_delete failed: file not found - diff_A.txt
+fs_delete called for file: diff_B.txt
+fs_delete failed: file not found - diff_B.txt
+fs_delete called for file: diff_C.txt
+fs_delete failed: file not found - diff_C.txt
+fs_delete called for file: diff_D_empty.txt
+fs_delete failed: file not found - diff_D_empty.txt
+fs_delete called for file: diff_E_empty.txt
+fs_delete failed: file not found - diff_E_empty.txt
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_B.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_B.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 25 bytes to file diff_B.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_B.txt, new size: 25, blocks used: 1, start_block: 1
+fs_diff called for files: \'diff_A.txt\' and \'diff_B.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_B.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_B.txt' -> 25.
+fs_read called for file: diff_A.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_A.txt' (requested: 25, offset: 0).
+fs_read called for file: diff_B.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_B.txt' (requested: 25, offset: 0).
+fs_diff: File contents are identical.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_B.txt
+fs_delete: Freeing 1 data blocks for file 'diff_B.txt' starting from block 1
+File 'diff_B.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_B.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_B.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 25 bytes to file diff_B.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_B.txt, new size: 25, blocks used: 1, start_block: 1
+fs_diff called for files: \'diff_A.txt\' and \'diff_B.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_B.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_B.txt' -> 25.
+fs_read called for file: diff_A.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_A.txt' (requested: 25, offset: 0).
+fs_read called for file: diff_B.txt, offset: 0, size: 25
+fs_read: Successfully read 25 bytes from file 'diff_B.txt' (requested: 25, offset: 0).
+fs_diff: File contents are different.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_B.txt
+fs_delete: Freeing 1 data blocks for file 'diff_B.txt' starting from block 1
+File 'diff_B.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_C.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_C.txt
+fs_write: Successfully allocated 1 blocks starting from 1.
+fs_write: Successfully wrote 14 bytes to file diff_C.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_C.txt, new size: 14, blocks used: 1, start_block: 1
+fs_diff called for files: \'diff_A.txt\' and \'diff_C.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_C.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_C.txt' -> 14.
+fs_diff: Files have different sizes. Considered different.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_C.txt
+fs_delete: Freeing 1 data blocks for file 'diff_C.txt' starting from block 1
+File 'diff_C.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 4 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 4, blocks used: 1, start_block: 0
+fs_diff called for files: \'diff_A.txt\' and \'non_existent_file.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'non_existent_file.txt' -> false.
+fs_diff failed: file2 not found - non_existent_file.txt
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 0
+fs_diff called for files: \'nope1.txt\' and \'nope2.txt\'.
+fs_exists check for 'nope1.txt' -> false.
+fs_diff failed: file1 not found - nope1.txt
+File 'diff_D_empty.txt' created.
+File 'diff_E_empty.txt' created.
+fs_diff called for files: \'diff_D_empty.txt\' and \'diff_E_empty.txt\'.
+fs_exists check for 'diff_D_empty.txt' -> true.
+fs_exists check for 'diff_E_empty.txt' -> true.
+fs_size for 'diff_D_empty.txt' -> 0.
+fs_size for 'diff_E_empty.txt' -> 0.
+fs_diff: Both files are empty. Considered the same.
+fs_delete called for file: diff_D_empty.txt
+File 'diff_D_empty.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_E_empty.txt
+File 'diff_E_empty.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+File 'diff_D_empty.txt' created.
+fs_diff called for files: \'diff_A.txt\' and \'diff_D_empty.txt\'.
+fs_exists check for 'diff_A.txt' -> true.
+fs_exists check for 'diff_D_empty.txt' -> true.
+fs_size for 'diff_A.txt' -> 25.
+fs_size for 'diff_D_empty.txt' -> 0.
+fs_diff: Files have different sizes. Considered different.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 1
+fs_delete called for file: diff_D_empty.txt
+File 'diff_D_empty.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 25 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 25, blocks used: 1, start_block: 0
+fs_diff called for files: \'diff_A.txt\' and \'diff_A.txt\'.
+fs_diff: Filenames are identical. Files are considered the same.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 0
+File 'diff_A.txt' created.
+fs_write: Attempting to allocate 1 contiguous blocks for file: diff_A.txt
+fs_write: Successfully allocated 1 blocks starting from 0.
+fs_write: Successfully wrote 4 bytes to file diff_A.txt. Blocks used for writing: 1
+fs_write completed successfully for file: diff_A.txt, new size: 4, blocks used: 1, start_block: 0
+fs_diff called for files: \'NULL\' and \'diff_A.txt\'.
+fs_diff failed: one or both filenames are null or empty.
+fs_diff called for files: \'diff_A.txt\' and \'\'.
+fs_diff failed: one or both filenames are null or empty.
+fs_delete called for file: diff_A.txt
+fs_delete: Freeing 1 data blocks for file 'diff_A.txt' starting from block 0
+File 'diff_A.txt' deleted successfully. Active files: 0
+Disk formatted with new metadata structure (superblock, bitmap, FileInfo array). Max files: 12

@@ -4,6 +4,7 @@
 #include <algorithm> // std::find için
 #include <set>      // Benzersiz blokları saymak için
 #include <fstream>  // std::fstream için eklendi
+#include <cstdio>   // std::remove için eklendi (backup dosyasını silmek için)
 
 // Bitmap testleri için fs.hpp'den bazı sabitlere erişim gerekebilir
 // Eğer fs.hpp içinde değillerse, burada tanımlamamız veya fs.hpp'ye eklememiz gerekebilir.
@@ -313,7 +314,7 @@ void test_file_write_operations() {
         
         if (write_res < 0) {
             std::cout << "    fs_write hatası: " << write_res << " (Dosya: " << filename_buf << ")" << std::endl;
-            if (write_res == -6) {
+            if (write_res == -6) { // Assuming -6 is "no contiguous space / disk full for data"
                  std::cout << "    [SUCCESS] Disk dolu/yetersiz ardışık alan hatası (-6) alındı." << std::endl;
                  disk_full_error_received = true;
             } else {
@@ -326,7 +327,7 @@ void test_file_write_operations() {
     }
     std::cout << "  Disk Doldurma Testi Sonrası Durum:" << std::endl;
     fs_ls();
-    if (!disk_full_error_received && files_to_try > NUM_DATA_BLOCKS && files_to_try > MAX_FILES_CALCULATED) {
+    if (!disk_full_error_received && files_to_try > NUM_DATA_BLOCKS && files_to_try > MAX_FILES_CALCULATED) { // If we tried to exceed limits but got no error
         std::cout << "  [WARNING] Disk doldurma denemesi tamamlandı ancak beklenen -6 hatası alınmadı. Disk yapısını kontrol et." << std::endl;
     }
 
@@ -619,7 +620,7 @@ void test_file_cat_operations() {
     std::cout << "  ACTION: fs_cat(\"" << file_content_cat << "\") çağrılıyor. Beklenen çıktı:" << std::endl;
     std::cout << "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv" << std::endl;
     std::cout << content_cat; // Beklenen çıktıyı önce yazdırıyoruz
-    std::cout << "ʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌ" << std::endl;
+    std::cout << "\nʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌ" << std::endl;
     std::cout << "  fs_cat çıktısı:" << std::endl;
     std::cout << "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv" << std::endl;
     fs_cat(file_content_cat);
@@ -963,6 +964,7 @@ void test_file_append_operations() {
     // İçeriği kontrol etmek için bir fs_read ve strncmp/memcmp yapılabilir.
     char* read_buffer = new char[expected_total_size + 1];
     fs_read(file_block_span, 0, expected_total_size, read_buffer);
+    read_buffer[expected_total_size] = '\0'; // Null-terminate for strcmp
     if (strncmp(read_buffer, initial_block_data, initial_block_size) == 0 && 
         strncmp(read_buffer + initial_block_size, append_block_data, append_block_size) == 0) {
         std::cout << "    [SUCCESS] Blok aşan eklemenin içeriği doğru." << std::endl;
@@ -1200,13 +1202,13 @@ void test_file_copy_operations() {
     std::cout << "  ACTION: fs_copy(\"" << valid_src_for_invalid << "\", \"\") ... Beklenen: Hata." << std::endl;
     fs_copy(valid_src_for_invalid, "");
     
-    char long_name[MAX_FILENAME_LENGTH + 5];
-    memset(long_name, 'L', MAX_FILENAME_LENGTH + 4);
-    long_name[MAX_FILENAME_LENGTH + 4] = '\0';
+    char long_name_copy[MAX_FILENAME_LENGTH + 5]; // Renamed to avoid conflict
+    memset(long_name_copy, 'L', MAX_FILENAME_LENGTH + 4);
+    long_name_copy[MAX_FILENAME_LENGTH + 4] = '\0';
     std::cout << "  ACTION: fs_copy(\"" << valid_src_for_invalid << "\", [çok_uzun_isim]) ... Beklenen: Hata." << std::endl;
-    fs_copy(valid_src_for_invalid, long_name);
+    fs_copy(valid_src_for_invalid, long_name_copy);
     std::cout << "  ACTION: fs_copy([çok_uzun_isim], \"dest.txt\") ... Beklenen: Hata." << std::endl;
-    fs_copy(long_name, "dest.txt");
+    fs_copy(long_name_copy, "dest.txt");
     std::cout << "  Test 6 sonrası dosya listesi:" << std::endl; fs_ls();
 
 
@@ -1228,13 +1230,16 @@ void test_file_copy_operations() {
     // Büyük bir kaynak dosya oluşturalım (kalan tek slota sığmayacak kadar büyük değil, ama birden fazla blok gerektirecek)
     const char* large_src_file = "large_source.txt";
     fs_create(large_src_file);
-    unsigned int approx_half_block_size = BLOCK_SIZE_BYTES / 2 - 10; // Tek bir blokta kalacak şekilde. Değişken adı düzeltildi.
-    char* large_data_1 = new char[approx_half_block_size +1];
-    memset(large_data_1, 'A', approx_half_block_size);
-    large_data_1[approx_half_block_size] = '\0';
-    fs_write(large_src_file, large_data_1, approx_half_block_size);
+    // unsigned int approx_half_block_size = BLOCK_SIZE_BYTES / 2 - 10; // Tek bir blokta kalacak şekilde. Değişken adı düzeltildi.
+    // char* large_data_1 = new char[approx_half_block_size +1]; // Bu değişken kullanılmıyor gibi.
+    unsigned int data_size_for_large_src = BLOCK_SIZE_BYTES / 2 -10;
+    char* data_for_large_src = new char[data_size_for_large_src +1];
+    memset(data_for_large_src, 'A', data_size_for_large_src);
+    data_for_large_src[data_size_for_large_src] = '\0';
+    fs_write(large_src_file, data_for_large_src, data_size_for_large_src);
     std::cout << "  Büyük kaynak dosya ('" << large_src_file << "') oluşturuldu, boyutu: " << fs_size(large_src_file) << std::endl;
     fs_ls();
+    delete[] data_for_large_src;
     
     // Diskteki kalan boş blok sayısını azaltmak için bir dosya daha oluşturalım (MAX_FILES'a ulaşmadan)
     // Bu aşamada MAX_FILES-1 + 1 = MAX_FILES dosya var. Superblock'ta yer kalmadı.
@@ -1245,7 +1250,7 @@ void test_file_copy_operations() {
     fs_copy(large_src_file, copy_target_disk_full);
     std::cout << "  Kopyalama sonrası '" << copy_target_disk_full << "' var mı? " << (fs_exists(copy_target_disk_full) ? "EVET" : "HAYIR") << " (Beklenen: HAYIR)" << std::endl;
     fs_ls();
-    delete[] large_data_1;
+    // delete[] large_data_1; // Bu değişken zaten tanımlı değildi.
 
     // Şimdi MAX_FILES'ı geçmeyecek ama veri blokları yetmeyecek bir senaryo:
     std::cout << "\n  Hazırlık: Diski tek bir büyük dosya ile doldurma (veri blokları için)..." << std::endl;
@@ -1413,6 +1418,8 @@ void test_defragmentation() {
 
     char bufferA[100];
     char bufferC[100];
+    memset(bufferA, 0, 100); // Initialize buffers
+    memset(bufferC, 0, 100);
     fs_read(fileA, 0, strlen(contentA), bufferA);
     fs_read(fileC, 0, strlen(contentC), bufferC);
 
@@ -1469,13 +1476,452 @@ void test_integrity_check() {
     std::cout << "\n--- Dosya Sistemi Bütünlük Kontrolü Testleri Tamamlandı ---" << std::endl;
 }
 
-int main() {
-    fs_init();      // Dosya sistemini başlat
-    std::cout << std::endl;
-    fs_init();      // Tekrar başlatmayı dene (disk zaten var olmalı)
-    std::cout << std::endl;
+// Helper function to compare two files byte by byte
+bool compare_files(const std::string& p1, const std::string& p2) {
+    std::ifstream f1(p1, std::ifstream::binary|std::ifstream::ate);
+    std::ifstream f2(p2, std::ifstream::binary|std::ifstream::ate);
 
-    // test_bitmap_functions(); 
+    if (f1.fail() || f2.fail()) {
+        std::cerr << "File comparison error: Could not open/read one or both files. p1_good: " << f1.good() << ", p2_good: " << f2.good() << std::endl;
+        return false; //file problem
+    }
+
+    if (f1.tellg() != f2.tellg()) {
+        std::cerr << "File comparison error: Size mismatch. p1_size: " << f1.tellg() << ", p2_size: " << f2.tellg() << std::endl;
+        return false; //size mismatch
+    }
+
+    //seek back to beginning and use std::equal to compare contents
+    f1.seekg(0, std::ifstream::beg);
+    f2.seekg(0, std::ifstream::beg);
+    return std::equal(std::istreambuf_iterator<char>(f1.rdbuf()),
+                      std::istreambuf_iterator<char>(),
+                      std::istreambuf_iterator<char>(f2.rdbuf()));
+}
+
+void test_backup_operations() {
+    std::cout << "\n--- Disk Yedekleme İşlemleri Testleri Başlıyor ---" << std::endl;
+    const char* backup_file = "disk.backup";
+    const char* original_disk = "disk.sim"; // Assuming this is the name of your simulated disk
+
+    // Clean up any previous backup file
+    std::remove(backup_file);
+
+    // Test 1: Basit yedekleme
+    std::cout << "\n[Test 1: Basit Yedekleme]" << std::endl;
+    fs_format(); // Format the FS
+    fs_init(); // Ensure disk.sim is fresh and has a known state (e.g. empty or with some initial files)
+
+    // Create some files to make the disk state non-trivial
+    fs_create("file1_bak.txt");
+    fs_write("file1_bak.txt", "Content for file1 for backup test.", strlen("Content for file1 for backup test."));
+    fs_create("file2_bak.txt");
+    fs_write("file2_bak.txt", "Another file with some data for backup.", strlen("Another file with some data for backup."));
+    fs_ls();
+
+    std::cout << "  Dosya sistemi hazırlandı. Yedekleme yapılıyor: " << backup_file << std::endl;
+    int backup_result = fs_backup(backup_file);
+
+    if (backup_result == 0) {
+        std::cout << "  [SUCCESS] fs_backup başarıyla tamamlandı." << std::endl;
+        // Check if backup file exists
+        std::ifstream bak_check(backup_file, std::ios::binary);
+        if (bak_check.good()) {
+            std::cout << "  [SUCCESS] Yedek dosyası (" << backup_file << ") oluşturuldu." << std::endl;
+            bak_check.close();
+
+            // Compare original disk.sim with backup_file
+            if (compare_files(original_disk, backup_file)) {
+                std::cout << "  [SUCCESS] Yedek dosyası (" << backup_file << ") içerik olarak orijinal disk.sim ile aynı." << std::endl;
+            } else {
+                std::cout << "  [FAILURE] Yedek dosyası (" << backup_file << ") içerik olarak orijinal disk.sim ile FARKLI!" << std::endl;
+            }
+        } else {
+            std::cout << "  [FAILURE] Yedek dosyası (" << backup_file << ") oluşturulamadı veya açılamadı! (ifstream check failed)" << std::endl;
+        }
+    } else {
+        std::cout << "  [FAILURE] fs_backup hata kodu döndürdü: " << backup_result << std::endl;
+    }
+    std::remove(backup_file); // Clean up after test
+
+    // Test 2: Boş disk yedekleme
+    std::cout << "\n[Test 2: Boş Disk Yedekleme]" << std::endl;
+    fs_format(); // Format to make it empty
+    fs_init(); 
+    fs_ls(); // Should show no files
+
+    std::cout << "  Boş dosya sistemi yedekleniyor: " << backup_file << std::endl;
+    backup_result = fs_backup(backup_file);
+    if (backup_result == 0) {
+        std::cout << "  [SUCCESS] fs_backup (boş disk) başarıyla tamamlandı." << std::endl;
+        std::ifstream bak_check_empty(backup_file, std::ios::binary);
+        if (bak_check_empty.good()) {
+            std::cout << "  [SUCCESS] Yedek dosyası (" << backup_file << ") (boş disk) oluşturuldu." << std::endl;
+            bak_check_empty.close();
+             if (compare_files(original_disk, backup_file)) {
+                std::cout << "  [SUCCESS] Yedek dosyası (boş disk) içerik olarak orijinal disk.sim ile aynı." << std::endl;
+            } else {
+                std::cout << "  [FAILURE] Yedek dosyası (boş disk) içerik olarak orijinal disk.sim ile FARKLI!" << std::endl;
+            }
+        } else {
+            std::cout << "  [FAILURE] Yedek dosyası (" << backup_file << ") (boş disk) oluşturulamadı veya açılamadı!" << std::endl;
+        }
+    } else {
+        std::cout << "  [FAILURE] fs_backup (boş disk) hata kodu döndürdü: " << backup_result << std::endl;
+    }
+    std::remove(backup_file); // Clean up
+
+
+    // Test 3: Yedekleme hedefi olarak geçersiz bir yol (Bu fs_backup'ın kendisi tarafından ele alınmalı)
+    std::cout << "\n[Test 3: Geçersiz Yedekleme Hedefi]" << std::endl;
+    // fs_backup, dosya oluşturma hatasını işlemeli. Örneğin, yazma izni olmayan bir yer.
+    // Bu test, fs_backup'ın robustluğunu gösterir. 
+    const char* invalid_backup_path = "non_existent_dir/mybackup.bak"; // This path likely won't be writable
+    std::cout << "  Geçersiz yola yedekleme deneniyor: " << invalid_backup_path << std::endl;
+    backup_result = fs_backup(invalid_backup_path);
+    if (backup_result != 0) { // Hata bekleniyor (e.g., -1 or other error code from fs_backup)
+        std::cout << "  [SUCCESS] fs_backup geçersiz hedef için beklendiği gibi hata döndürdü (" << backup_result << ")." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] fs_backup geçersiz hedef için hata döndürmedi! Bu bir sorun olabilir veya dosya beklenmedik şekilde oluşturulmuş olabilir." << std::endl;
+        std::remove(invalid_backup_path); // Eğer bir şekilde oluşturduysa sil.
+    }
+    
+    // Test 4: Varolan bir yedek dosyasının üzerine yazma
+    std::cout << "\n[Test 4: Varolan Yedek Dosyasının Üzerine Yazma]" << std::endl;
+    fs_format();
+    fs_init();
+    fs_create("overwrite_src.txt");
+    fs_write("overwrite_src.txt", "Initial content for overwrite backup test", strlen("Initial content for overwrite backup test"));
+
+    // İlk yedeklemeyi yap
+    std::cout << "  İlk yedekleme (" << backup_file << ") yapılıyor..." << std::endl;
+    fs_backup(backup_file);
+    std::cout << "  İlk yedekleme tamamlandı." << std::endl;
+
+    // Dosya sistemini değiştir (örn: bir dosya sil, başka bir dosya ekle/değiştir)
+    fs_delete("overwrite_src.txt");
+    fs_create("new_content_for_overwrite.txt");
+    fs_write("new_content_for_overwrite.txt", "This is new content after first backup, for overwrite test.", strlen("This is new content after first backup, for overwrite test."));
+    fs_ls();
+    
+    std::cout << "  Dosya sistemi değiştirildi. Yedekleme (" << backup_file << ") üzerine yazılıyor..." << std::endl;
+    backup_result = fs_backup(backup_file); // Aynı dosyaya tekrar yedekle
+
+    if (backup_result == 0) {
+        std::cout << "  [SUCCESS] fs_backup (üzerine yazma) başarıyla tamamlandı." << std::endl;
+        if (compare_files(original_disk, backup_file)) {
+            std::cout << "  [SUCCESS] Üzerine yazılan yedek dosyası, güncel disk.sim ile aynı." << std::endl;
+        } else {
+            std::cout << "  [FAILURE] Üzerine yazılan yedek dosyası, güncel disk.sim ile FARKLI!" << std::endl;
+        }
+    } else {
+        std::cout << "  [FAILURE] fs_backup (üzerine yazma) hata kodu döndürdü: " << backup_result << std::endl;
+    }
+    std::remove(backup_file); // Clean up
+
+    std::cout << "\n--- Disk Yedekleme İşlemleri Testleri Tamamlandı ---" << std::endl;
+}
+
+void test_restore_operations() {
+    std::cout << "\n--- Disk Geri Yükleme İşlemleri Testleri Başlıyor ---" << std::endl;
+    const char* backup_file_for_restore = "disk_for_restore.backup";
+    // const char* original_disk_sim = "disk.sim"; // Kullanılmadığı için kaldırıldı.
+
+    // Her testten önce/sonra yedek dosyasını temizle
+    std::remove(backup_file_for_restore);
+
+    // Test 1: Temel Geri Yükleme
+    std::cout << "\n[Test 1: Temel Geri Yükleme]" << std::endl;
+    // A. Bir başlangıç disk durumu oluştur ve yedekle
+    fs_format();
+    fs_init();
+    fs_create("file_A.txt");
+    fs_write("file_A.txt", "Content of File A for restore.", strlen("Content of File A for restore."));
+    fs_create("file_B.txt");
+    fs_write("file_B.txt", "Content of File B.", strlen("Content of File B."));
+    std::cout << "  Durum (Yedekleme Öncesi):" << std::endl;
+    fs_ls();
+    int backup_res_t1 = fs_backup(backup_file_for_restore);
+    if (backup_res_t1 != 0) {
+        std::cout << "  [HAZIRLIK BAŞARISIZ] Test 1 için yedekleme başarısız oldu. Kod: " << backup_res_t1 << std::endl;
+        std::remove(backup_file_for_restore);
+        return;
+    }
+    std::cout << "  Disk durumu '" << backup_file_for_restore << "' dosyasına yedeklendi." << std::endl;
+
+    // B. Dosya sistemini değiştir (farklı bir duruma getir)
+    fs_delete("file_A.txt");
+    fs_create("file_C.txt");
+    fs_write("file_C.txt", "New file C.", strlen("New file C."));
+    fs_rename("file_B.txt", "renamed_B.txt");
+    std::cout << "  Durum (Geri Yükleme Öncesi - Değiştirilmiş):" << std::endl;
+    fs_ls();
+
+    // C. Yedekten geri yükle
+    std::cout << "  ACTION: fs_restore(\"" << backup_file_for_restore << "\") çağrılıyor..." << std::endl;
+    fs_restore(backup_file_for_restore);
+    std::cout << "  Durum (Geri Yükleme Sonrası):" << std::endl;
+    fs_ls();
+
+    // D. Kontrol: Geri yüklenen durum orijinal yedeklenmiş durumla aynı mı?
+    // Dosya varlıkları ve içerikleri kontrol edilebilir. Basitlik için fs_exists ve fs_size ile kontrol edelim.
+    bool check_A_exists = fs_exists("file_A.txt");
+    int check_A_size = fs_size("file_A.txt");
+    bool check_B_exists = fs_exists("file_B.txt"); // Orijinal isimle var olmalı
+    int check_B_size = fs_size("file_B.txt");
+    bool check_C_not_exists = !fs_exists("file_C.txt"); // Yedekte olmamalı
+    bool check_renamedB_not_exists = !fs_exists("renamed_B.txt"); // Yedekte olmamalı
+
+    if (check_A_exists && check_A_size == (int)strlen("Content of File A for restore.") &&
+        check_B_exists && check_B_size == (int)strlen("Content of File B.") &&
+        check_C_not_exists && check_renamedB_not_exists) {
+        std::cout << "  [SUCCESS] Test 1: Geri yüklenen dosya sistemi yedeklenmiş durumla tutarlı." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 1: Geri yüklenen dosya sistemi yedeklenmiş durumla TUTARSIZ!" << std::endl;
+        std::cout << "    file_A.txt exists: " << check_A_exists << ", size: " << check_A_size << std::endl;
+        std::cout << "    file_B.txt exists: " << check_B_exists << ", size: " << check_B_size << std::endl;
+        std::cout << "    file_C.txt NOT exists: " << check_C_not_exists << std::endl;
+        std::cout << "    renamed_B.txt NOT exists: " << check_renamedB_not_exists << std::endl;
+    }
+    std::remove(backup_file_for_restore);
+
+
+    // Test 2: Var olmayan bir yedek dosyasından geri yükleme denemesi
+    std::cout << "\n[Test 2: Var Olmayan Yedek Dosyasından Geri Yükleme]" << std::endl;
+    const char* non_existent_backup = "no_such_backup.bak";
+    std::remove(non_existent_backup); // Emin olmak için sil (gerçi olmamalı)
+    std::cout << "  ACTION: fs_restore(\"" << non_existent_backup << "\") çağrılıyor (hata bekleniyor)..." << std::endl;
+    fs_format(); // Temiz bir disk durumuyla başla
+    fs_init();
+    fs_create("before_restore_attempt.txt");
+    fs_restore(non_existent_backup);
+    // Beklenti: Hata mesajı alınmalı, disk.sim'deki "before_restore_attempt.txt" etkilenmemeli.
+    if (fs_exists("before_restore_attempt.txt")) {
+        std::cout << "  [SUCCESS] Test 2: Var olmayan yedekle geri yükleme sonrası diskteki dosya hala mevcut (beklendiği gibi)." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 2: Var olmayan yedekle geri yükleme sonrası diskteki dosya silinmiş!" << std::endl;
+    }
+    fs_delete("before_restore_attempt.txt"); // Temizlik
+
+    // Test 3: Boş bir disk.sim üzerine yedek geri yükleme (yedek doluysa disk dolmalı)
+    std::cout << "\n[Test 3: Boş Disk Üzerine Dolu Yedek Geri Yükleme]" << std::endl;
+    // A. Dolu bir yedek oluştur
+    fs_format(); fs_init();
+    fs_create("backup_content1.dat"); fs_write("backup_content1.dat", "data1", 5);
+    fs_create("backup_content2.dat"); fs_write("backup_content2.dat", "data2 longer", 12);
+    std::cout << "  Dolu yedek oluşturuluyor..." << std::endl;
+    fs_backup(backup_file_for_restore);
+
+    // B. Diski formatla (boşalt)
+    std::cout << "  Disk formatlanıyor (boşaltılıyor)..." << std::endl;
+    fs_format(); fs_init();
+    std::cout << "  Durum (Boş Disk - Geri Yükleme Öncesi):" << std::endl;
+    fs_ls(); // Boş olmalı
+
+    // C. Dolu yedeği boş diske geri yükle
+    std::cout << "  ACTION: fs_restore(\"" << backup_file_for_restore << "\") (dolu yedek) çağrılıyor..." << std::endl;
+    fs_restore(backup_file_for_restore);
+    std::cout << "  Durum (Dolu Yedek Geri Yükleme Sonrası):" << std::endl;
+    fs_ls(); // Yedekteki dosyalar görünmeli
+
+    if (fs_exists("backup_content1.dat") && fs_exists("backup_content2.dat") && fs_size("backup_content2.dat") == 12) {
+        std::cout << "  [SUCCESS] Test 3: Boş disk üzerine dolu yedek başarıyla geri yüklendi." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 3: Boş disk üzerine dolu yedek geri yüklenemedi veya eksik yüklendi." << std::endl;
+    }
+    std::remove(backup_file_for_restore);
+
+    // Test 4: Nullptr yedek dosya adı ile geri yükleme
+    std::cout << "\n[Test 4: Nullptr Yedek Dosya Adı ile Geri Yükleme]" << std::endl;
+    std::cout << "  ACTION: fs_restore(nullptr) çağrılıyor (hata bekleniyor)..." << std::endl;
+    fs_restore(nullptr); // Hata mesajı fs_restore içinde gelmeli
+    // Bu testin başarısı manuel olarak cerr çıktısından ve loglardan kontrol edilir.
+    // Şimdilik basitçe çağırıyoruz.
+
+    std::cout << "\n--- Disk Geri Yükleme İşlemleri Testleri Tamamlandı ---" << std::endl;
+}
+
+void test_diff_operations() {
+    std::cout << "\n--- Dosya Karşılaştırma (fs_diff) Testleri Başlıyor ---" << std::endl;
+    const char* fileA = "diff_A.txt";
+    const char* fileB = "diff_B.txt";
+    const char* fileC = "diff_C.txt";
+    const char* fileD_empty = "diff_D_empty.txt";
+    const char* fileE_empty = "diff_E_empty.txt";
+
+    const char* content1 = "This is content number 1.";
+    const char* content2 = "This is content number 2.";
+    const char* content1_again = "This is content number 1.";
+
+    // Başlangıç temizliği
+    fs_delete(fileA);
+    fs_delete(fileB);
+    fs_delete(fileC);
+    fs_delete(fileD_empty);
+    fs_delete(fileE_empty);
+    fs_format();
+    fs_init();
+
+    // Test 1: İki aynı içerikli dosya
+    std::cout << "\n[Test 1: İki aynı içerikli dosya]" << std::endl;
+    fs_create(fileA);
+    fs_write(fileA, content1, strlen(content1));
+    fs_create(fileB);
+    fs_write(fileB, content1_again, strlen(content1_again));
+    std::cout << "  ACTION: fs_diff(\"" << fileA << "\", \"" << fileB << "\") çağrılıyor (0 bekleniyor)..." << std::endl;
+    if (fs_diff(fileA, fileB) == 0) {
+        std::cout << "  [SUCCESS] Test 1: Aynı içerikli dosyalar doğru şekilde aynı bulundu." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 1: Aynı içerikli dosyalar farklı bulundu!" << std::endl;
+    }
+    fs_delete(fileA); fs_delete(fileB);
+
+    // Test 2: İki farklı içerikli dosya (aynı boyutta)
+    std::cout << "\n[Test 2: İki farklı içerikli dosya (aynı boyutta)]" << std::endl;
+    fs_create(fileA);
+    fs_write(fileA, content1, strlen(content1));
+    fs_create(fileB);
+    fs_write(fileB, content2, strlen(content2)); // content2, content1 ile aynı uzunlukta olmalı
+    std::cout << "  ACTION: fs_diff(\"" << fileA << "\", \"" << fileB << "\") çağrılıyor (1 bekleniyor)..." << std::endl;
+    if (fs_diff(fileA, fileB) == 1) {
+        std::cout << "  [SUCCESS] Test 2: Farklı içerikli (aynı boyutlu) dosyalar doğru şekilde farklı bulundu." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 2: Farklı içerikli (aynı boyutlu) dosyalar aynı bulundu!" << std::endl;
+    }
+    fs_delete(fileA); fs_delete(fileB);
+
+    // Test 3: İki farklı içerikli dosya (farklı boyutta)
+    std::cout << "\n[Test 3: İki farklı içerikli dosya (farklı boyutta)]" << std::endl;
+    fs_create(fileA);
+    fs_write(fileA, content1, strlen(content1));
+    fs_create(fileC);
+    fs_write(fileC, "Short content.", strlen("Short content."));
+    std::cout << "  ACTION: fs_diff(\"" << fileA << "\", \"" << fileC << "\") çağrılıyor (1 bekleniyor)..." << std::endl;
+    if (fs_diff(fileA, fileC) == 1) {
+        std::cout << "  [SUCCESS] Test 3: Farklı boyutlu dosyalar doğru şekilde farklı bulundu." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 3: Farklı boyutlu dosyalar aynı bulundu!" << std::endl;
+    }
+    fs_delete(fileA); fs_delete(fileC);
+
+    // Test 4: Biri var olan, diğeri olmayan dosya
+    std::cout << "\n[Test 4: Biri var olan, diğeri olmayan dosya]" << std::endl;
+    fs_create(fileA);
+    fs_write(fileA, "data", 4);
+    std::cout << "  ACTION: fs_diff(\"" << fileA << "\", \"non_existent_file.txt\") çağrılıyor (negatif değer bekleniyor)..." << std::endl;
+    int diff_res_non_exist = fs_diff(fileA, "non_existent_file.txt");
+    if (diff_res_non_exist < 0) {
+        std::cout << "  [SUCCESS] Test 4: Var olmayan dosya ile karşılaştırma doğru şekilde hata verdi (kod: " << diff_res_non_exist << ")." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 4: Var olmayan dosya ile karşılaştırma hata vermedi (kod: " << diff_res_non_exist << ")!" << std::endl;
+    }
+    fs_delete(fileA);
+
+    // Test 5: İkisi de olmayan dosya
+    std::cout << "\n[Test 5: İkisi de olmayan dosya]" << std::endl;
+    std::cout << "  ACTION: fs_diff(\"nope1.txt\", \"nope2.txt\") çağrılıyor (negatif değer bekleniyor)..." << std::endl;
+    diff_res_non_exist = fs_diff("nope1.txt", "nope2.txt");
+    if (diff_res_non_exist < 0) {
+        std::cout << "  [SUCCESS] Test 5: İki var olmayan dosya ile karşılaştırma doğru şekilde hata verdi (kod: " << diff_res_non_exist << ")." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 5: İki var olmayan dosya ile karşılaştırma hata vermedi (kod: " << diff_res_non_exist << ")!" << std::endl;
+    }
+
+    // Test 6: İki boş dosya
+    std::cout << "\n[Test 6: İki boş dosya]" << std::endl;
+    fs_create(fileD_empty);
+    fs_create(fileE_empty);
+    std::cout << "  ACTION: fs_diff(\"" << fileD_empty << "\", \"" << fileE_empty << "\") çağrılıyor (0 bekleniyor)..." << std::endl;
+    if (fs_diff(fileD_empty, fileE_empty) == 0) {
+        std::cout << "  [SUCCESS] Test 6: İki boş dosya doğru şekilde aynı bulundu." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 6: İki boş dosya farklı bulundu!" << std::endl;
+    }
+    fs_delete(fileD_empty); fs_delete(fileE_empty);
+
+    // Test 7: Bir boş, bir dolu dosya
+    std::cout << "\n[Test 7: Bir boş, bir dolu dosya]" << std::endl;
+    fs_create(fileA);
+    fs_write(fileA, content1, strlen(content1));
+    fs_create(fileD_empty);
+    std::cout << "  ACTION: fs_diff(\"" << fileA << "\", \"" << fileD_empty << "\") çağrılıyor (1 bekleniyor)..." << std::endl;
+    if (fs_diff(fileA, fileD_empty) == 1) {
+        std::cout << "  [SUCCESS] Test 7: Boş ve dolu dosyalar doğru şekilde farklı bulundu." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 7: Boş ve dolu dosyalar aynı bulundu!" << std::endl;
+    }
+    fs_delete(fileA); fs_delete(fileD_empty);
+
+    // Test 8: Aynı dosyanın kendisiyle karşılaştırılması
+    std::cout << "\n[Test 8: Aynı dosyanın kendisiyle karşılaştırılması]" << std::endl;
+    fs_create(fileA);
+    fs_write(fileA, content1, strlen(content1));
+    std::cout << "  ACTION: fs_diff(\"" << fileA << "\", \"" << fileA << "\") çağrılıyor (0 bekleniyor)..." << std::endl;
+    if (fs_diff(fileA, fileA) == 0) {
+        std::cout << "  [SUCCESS] Test 8: Dosyanın kendisiyle karşılaştırılması doğru şekilde aynı bulundu." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 8: Dosyanın kendisiyle karşılaştırılması farklı bulundu!" << std::endl;
+    }
+    fs_delete(fileA);
+
+    // Test 9: Nullptr veya boş dosya adı ile çağırma
+    std::cout << "\n[Test 9: Nullptr veya boş dosya adı ile çağırma]" << std::endl;
+    fs_create(fileA); // Bir dosya oluşturulsun ki diğeri null olsun
+    fs_write(fileA, "data", 4);
+    std::cout << "  ACTION: fs_diff(nullptr, \"" << fileA << "\") çağrılıyor (negatif değer bekleniyor)..." << std::endl;
+    int diff_res_null = fs_diff(nullptr, fileA);
+    if (diff_res_null < 0) {
+        std::cout << "  [SUCCESS] Test 9a: nullptr dosya adı ile karşılaştırma doğru şekilde hata verdi (kod: " << diff_res_null << ")." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 9a: nullptr dosya adı ile karşılaştırma hata vermedi (kod: " << diff_res_null << ")!" << std::endl;
+    }
+    std::cout << "  ACTION: fs_diff(\"" << fileA << "\", \"\") çağrılıyor (negatif değer bekleniyor)..." << std::endl;
+    diff_res_null = fs_diff(fileA, "");
+    if (diff_res_null < 0) {
+        std::cout << "  [SUCCESS] Test 9b: Boş dosya adı ile karşılaştırma doğru şekilde hata verdi (kod: " << diff_res_null << ")." << std::endl;
+    } else {
+        std::cout << "  [FAILURE] Test 9b: Boş dosya adı ile karşılaştırma hata vermedi (kod: " << diff_res_null << ")!" << std::endl;
+    }
+    fs_delete(fileA);
+
+    std::cout << "\n--- Dosya Karşılaştırma (fs_diff) Testleri Tamamlandı ---" << std::endl;
+}
+
+void display_menu() {
+    std::cout << "\n===== SimpleFS Kullanıcı Arayüzü =====" << std::endl;
+    std::cout << "1.  Dosya Oluştur (fs_create)" << std::endl;
+    std::cout << "2.  Dosya Sil (fs_delete)" << std::endl;
+    std::cout << "3.  Dosya Yeniden Adlandır (fs_rename)" << std::endl;
+    std::cout << "4.  Dosyaları Listele (fs_ls)" << std::endl;
+    std::cout << "5.  Dosyaya Yaz (fs_write)" << std::endl;
+    std::cout << "6.  Dosyadan Oku (fs_read)" << std::endl;
+    std::cout << "7.  Dosya İçeriğini Göster (fs_cat)" << std::endl;
+    std::cout << "8.  Dosya Sonuna Ekle (fs_append)" << std::endl;
+    std::cout << "9.  Dosyayı Kes/Küçült (fs_truncate)" << std::endl;
+    std::cout << "10. Dosya Kopyala (fs_copy)" << std::endl;
+    std::cout << "11. Dosya Taşı (fs_mv)" << std::endl;
+    std::cout << "12. Disk Birleştir (fs_defragment)" << std::endl;
+    std::cout << "13. Dosya Sistemi Bütünlüğünü Kontrol Et (fs_check_integrity)" << std::endl;
+    std::cout << "14. Disk Yedeği Al (fs_backup)" << std::endl;
+    std::cout << "15. Disk Yedeğini Geri Yükle (fs_restore)" << std::endl;
+    std::cout << "16. İki Dosyayı Karşılaştır (fs_diff)" << std::endl;
+    std::cout << "17. Diski Formatla (fs_format)" << std::endl;
+    std::cout << "18. Dosya Sistemini Başlat (fs_init)" << std::endl;
+    std::cout << "0.  Çıkış" << std::endl;
+    std::cout << "Lütfen bir işlem seçin: ";
+}
+
+int main() {
+    // fs_init(); // Disk dosyasının var olduğundan emin olmak için başlangıçta çağrılabilir.
+                // Ancak formatlama veya diğer testler disk.sim'i zaten oluşturabilir/yönetebilir.
+                // Kullanıcı menüden 18'i seçerek de başlatabilir.
+
+    // Test fonksiyonlarını çağırmak yerine kullanıcı arayüzünü başlat
+    // test_disk_operations();
+    // test_metadata_operations();
+    // test_bitmap_functions(); // Bitmap fonksiyonlarını test et
+    // test_file_creation_and_listing();
+    // test_bitmap_functions();
     // test_file_write_operations();
     // test_file_read_operations();
     // test_file_cat_operations();
@@ -1484,10 +1930,182 @@ int main() {
     // test_file_append_operations();
     // test_file_truncate_operations();
     // test_file_copy_operations();
-    test_file_move_operations();
-    test_defragmentation();
-    test_integrity_check();
+    // test_file_move_operations();
+    // test_defragmentation();
+    // test_integrity_check();
+    // test_backup_operations();
+    // test_restore_operations();
+    //test_diff_operations();
 
-    std::cout << "\nProgramdan çıkılıyor." << std::endl;
+
+    int choice;
+    char filename1[MAX_FILENAME_LENGTH + 1];
+    char filename2[MAX_FILENAME_LENGTH + 1];
+    char data_buffer[MAX_FILE_SIZE_FOR_USER_INPUT + 1]; // Yazma ve okuma için buffer. Yeni sabit kullanıldı.
+    int size, offset, new_size_truncate;
+
+    // Diski başlat (fs_init içindeki disk.sim yoksa oluşturur ve fs_log için gerekli)
+    // Eğer disk.sim yoksa ve formatlanmamışsa bazı işlemler hata verebilir.
+    // Kullanıcının bilinçli olarak formatlaması veya init yapması beklenebilir.
+    // Şimdilik, program başlarken temel bir başlatma yapalım.
+    fs_init(); // fs_log'un çalışması için log dosyasının oluşturulması gerekebilir, fs_init bunu yapabilir.
+
+
+    do {
+        display_menu();
+        std::cin >> choice;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Girdi buffer'ını temizle
+
+        switch (choice) {
+            case 1: // fs_create
+                std::cout << "Oluşturulacak dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                fs_create(filename1);
+                break;
+            case 2: // fs_delete
+                std::cout << "Silinecek dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                fs_delete(filename1);
+                break;
+            case 3: // fs_rename
+                std::cout << "Eski dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Yeni dosya adı: ";
+                std::cin.getline(filename2, MAX_FILENAME_LENGTH);
+                fs_rename(filename1, filename2);
+                break;
+            case 4: // fs_ls
+                fs_ls();
+                break;
+            case 5: // fs_write
+                std::cout << "Yazılacak dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Yazılacak veri: ";
+                std::cin.getline(data_buffer, MAX_FILE_SIZE_FOR_USER_INPUT);
+                std::cout << "Yazılacak boyut: ";
+                std::cin >> size;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Temizle
+                if (size < 0) { // Negatif boyut kontrolü
+                    std::cout << "Hata: Yazılacak boyut negatif olamaz." << std::endl;
+                } else if (size > MAX_FILE_SIZE_FOR_USER_INPUT) {
+                    std::cout << "Hata: İstenen yazma boyutu (" << size << ") buffer boyutunu (" << MAX_FILE_SIZE_FOR_USER_INPUT << ") aşıyor." << std::endl;
+                } else {
+                    fs_write(filename1, data_buffer, size);
+                    std::cout << "Veri başarıyla yazıldı." << std::endl;
+                }
+                break;
+            case 6: // fs_read
+                std::cout << "Okunacak dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Okunacak offset: ";
+                std::cin >> offset;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Temizle
+                std::cout << "Okunacak boyut: ";
+                std::cin >> size;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Temizle
+                if (size < 0) { // Negatif boyut kontrolü
+                    std::cout << "Hata: Okunacak boyut negatif olamaz." << std::endl;
+                } else if (size > MAX_FILE_SIZE_FOR_USER_INPUT) {
+                    std::cout << "Hata: İstenen okuma boyutu (" << size << ") buffer boyutunu (" << MAX_FILE_SIZE_FOR_USER_INPUT << ") aşıyor." << std::endl;
+                } else {
+                    // data_buffer'ı her okuma öncesi temizlemek iyi bir pratik olabilir.
+                    memset(data_buffer, 0, sizeof(data_buffer)); 
+                    fs_read(filename1, offset, size, data_buffer);
+                    // fs_read'in buffer'ı null-terminate edip etmediğine bağlı olarak burada bir işlem gerekebilir.
+                    // Güvenlik için, eğer fs_read okuduğu byte kadarını yazıyorsa ve null-terminate etmiyorsa:
+                    // data_buffer[size] = '\0'; // Bu satır, okunan gerçek byte sayısına göre ayarlanmalı.
+                    // Şimdilik fs_read'in bunu yaptığı veya buffer'ın zaten sıfırlandığı varsayılıyor.
+                    std::cout << "Okunan veri: \"" << data_buffer << "\"" << std::endl;
+                }
+                break;
+            case 7: // fs_cat
+                std::cout << "Cat işlemi için dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                fs_cat(filename1);
+                break;
+            case 8: // fs_append
+                std::cout << "Eklemek için dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Eklemek için veri: ";
+                std::cin.getline(data_buffer, MAX_FILE_SIZE_FOR_USER_INPUT);
+                std::cout << "Eklemek için boyut: ";
+                std::cin >> size;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Temizle
+                if (size < 0) { // Negatif boyut kontrolü
+                    std::cout << "Hata: Eklemek için boyut negatif olamaz." << std::endl;
+                } else if (size > MAX_FILE_SIZE_FOR_USER_INPUT) {
+                    std::cout << "Hata: İstenen ekleme boyutu (" << size << ") buffer boyutunu (" << MAX_FILE_SIZE_FOR_USER_INPUT << ") aşıyor." << std::endl;
+                } else {
+                    fs_append(filename1, data_buffer, size);
+                    std::cout << "Veri başarıyla eklendi." << std::endl;
+                }
+                break;
+            case 9: // fs_truncate
+                std::cout << "Kesmek için dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Kesilecek boyut: ";
+                std::cin >> new_size_truncate;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Temizle
+                fs_truncate(filename1, new_size_truncate);
+                std::cout << "Dosya başarıyla kesildi." << std::endl;
+                break;
+            case 10: // fs_copy
+                std::cout << "Kopyalanacak kaynak dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Kopyalanacak hedef dosya adı: ";
+                std::cin.getline(filename2, MAX_FILENAME_LENGTH);
+                fs_copy(filename1, filename2);
+                break;
+            case 11: // fs_mv
+                std::cout << "Taşınacak dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Yeni dosya adı: ";
+                std::cin.getline(filename2, MAX_FILENAME_LENGTH);
+                fs_mv(filename1, filename2);
+                break;
+            case 12: // fs_defragment
+                fs_defragment();
+                std::cout << "Disk birleştirme işlemi başarıyla tamamlandı." << std::endl;
+                break;
+            case 13: // fs_check_integrity
+                fs_check_integrity();
+                std::cout << "Dosya sistemi bütünlük kontrolü başarıyla tamamlandı." << std::endl;
+                break;
+            case 14: // fs_backup
+                std::cout << "Yedeklemek için dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                fs_backup(filename1);
+                std::cout << "Dosya başarıyla yedeklendi." << std::endl;
+                break;
+            case 15: // fs_restore
+                std::cout << "Geri yüklemek için dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                fs_restore(filename1);
+                std::cout << "Dosya başarıyla geri yüklendi." << std::endl;
+                break;
+            case 16: // fs_diff
+                std::cout << "Karşılaştırılacak ilk dosya adı: ";
+                std::cin.getline(filename1, MAX_FILENAME_LENGTH);
+                std::cout << "Karşılaştırılacak ikinci dosya adı: ";
+                std::cin.getline(filename2, MAX_FILENAME_LENGTH);
+                fs_diff(filename1, filename2);
+                break;
+            case 17: // fs_format
+                fs_format();
+                std::cout << "Dosya sistemi başarıyla formatlandı." << std::endl;
+                break;
+            case 18: // fs_init
+                fs_init();
+                std::cout << "Dosya sistemi başarıyla başlatıldı." << std::endl;
+                break;
+            case 0: // Çıkış
+                std::cout << "\nProgramdan çıkılıyor." << std::endl;
+                return 0;
+            default:
+                std::cout << "Geçersiz seçim. Lütfen tekrar deneyin." << std::endl;
+                break;
+        }
+    } while (choice != 0);
+
     return 0;
 } 
