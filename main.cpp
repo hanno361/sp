@@ -1430,6 +1430,45 @@ void test_defragmentation() {
     std::cout << "\n--- Disk Birleştirme (Defragmentation) Testleri Tamamlandı ---" << std::endl;
 }
 
+void test_integrity_check() {
+    std::cout << "\n--- Dosya Sistemi Bütünlük Kontrolü (Integrity Check) Testleri Başlıyor ---" << std::endl;
+
+    // Test 1: Temiz ve tutarlı bir diskte kontrol
+    std::cout << "\n[Test 1: Temiz Diskte Bütünlük Kontrolü]" << std::endl;
+    fs_format();
+    fs_create("integrity_test1.txt");
+    fs_write("integrity_test1.txt", "some data", 9);
+    fs_create("integrity_test2.txt");
+    fs_write("integrity_test2.txt", "other data here", 15);
+    std::cout << "  Dosyalar oluşturulduktan sonra durum:" << std::endl;
+    fs_ls();
+    std::cout << "  ACTION: fs_check_integrity() çağrılıyor (hata beklenmiyor)..." << std::endl;
+    fs_check_integrity();
+
+    // Test 2: Dosya silindikten sonra kontrol
+    std::cout << "\n[Test 2: Dosya Silindikten Sonra Bütünlük Kontrolü]" << std::endl;
+    fs_delete("integrity_test1.txt");
+    std::cout << "  'integrity_test1.txt' silindikten sonra durum:" << std::endl;
+    fs_ls();
+    std::cout << "  ACTION: fs_check_integrity() çağrılıyor (hata beklenmiyor)..." << std::endl;
+    fs_check_integrity();
+
+    // Test 3: Tüm dosyalar silindikten sonra (boş disk)
+    std::cout << "\n[Test 3: Tüm Dosyalar Silindikten Sonra (Boş Disk) Bütünlük Kontrolü]" << std::endl;
+    fs_delete("integrity_test2.txt");
+    std::cout << "  Tüm dosyalar silindikten sonra durum:" << std::endl;
+    fs_ls();
+    std::cout << "  ACTION: fs_check_integrity() çağrılıyor (hata beklenmiyor)..." << std::endl;
+    fs_check_integrity();
+
+    // Not: Kasıtlı olarak tutarsızlık yaratmak için doğrudan disk manipülasyonu gerekir ki bu,
+    // mevcut fs_ API'leri ile zordur. Bu testler temel operasyonlar sonrası genel sağlığı kontrol eder.
+    // Daha derin tutarsızlık testleri için disk.sim dosyasını elle bozup fs_check_integrity()
+    // çağrılabilir (program dışı bir adım olarak).
+
+    std::cout << "\n--- Dosya Sistemi Bütünlük Kontrolü Testleri Tamamlandı ---" << std::endl;
+}
+
 int main() {
     fs_init();      // Dosya sistemini başlat
     std::cout << std::endl;
@@ -1447,6 +1486,7 @@ int main() {
     // test_file_copy_operations();
     test_file_move_operations();
     test_defragmentation();
+    test_integrity_check();
 
     std::cout << "\nProgramdan çıkılıyor." << std::endl;
     return 0;

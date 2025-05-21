@@ -72,8 +72,8 @@ Bu proje, C++ dilinde sistem çağrıları kullanılarak basit bir dosya sistemi
     - [x] Test Edildi
 - [x] `fs_defragment()`: Diskteki boş alanları birleştirme (Opsiyonel/İleri seviye).
     - [x] Test Edildi
-- [ ] `fs_check_integrity()`: Metadata ve veri blokları tutarlılığını kontrol etme.
-    - [ ] Test Edildi
+- [x] `fs_check_integrity()`: Metadata ve veri blokları tutarlılığını kontrol etme.
+    - [x] Test Edildi
 - [ ] `fs_backup(char* backup_filename)`: Disk yedeği alma.
     - [ ] Test Edildi
 - [ ] `fs_restore(char* backup_filename)`: Disk yedeğini geri yükleme.

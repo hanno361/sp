@@ -1851,3 +1851,154 @@ FileInfo fs_get_file_info_debug(const char* filename) {
     fs_log(("fs_get_file_info_debug: File '" + std::string(filename) + "' not found.").c_str());
     return not_found_fi; // Dosya bulunamadı
 }
+
+void fs_check_integrity() {
+    ensure_disk_initialized();
+    fs_log("File system integrity check started.");
+    bool is_consistent = true;
+    int issues_found = 0;
+
+    std::fstream disk_file(DISK_FILENAME, std::ios::binary | std::ios::in);
+    if (!disk_file) {
+        fs_log("fs_check_integrity CRITICAL: Could not open disk file.");
+        std::cerr << "CRITICAL (fs_check_integrity): Could not open disk file '" << DISK_FILENAME << "'." << std::endl;
+        return;
+    }
+
+    // 1. Superblock ve FileInfo listesini oku
+    Superblock sb;
+    disk_file.seekg(0, std::ios::beg);
+    disk_file.read(reinterpret_cast<char*>(&sb), SUPERBLOCK_ACTUAL_SIZE);
+    if (!disk_file) {
+        fs_log("fs_check_integrity ERROR: Could not read superblock.");
+        is_consistent = false; issues_found++;
+        disk_file.close();
+        return;
+    }
+
+    std::vector<FileInfo> all_files_info(MAX_FILES_CALCULATED);
+    disk_file.seekg(FILE_INFO_ARRAY_START_OFFSET_IN_METADATA, std::ios::beg);
+    for (int i = 0; i < MAX_FILES_CALCULATED; ++i) {
+        disk_file.read(reinterpret_cast<char*>(&all_files_info[i]), FILE_INFO_ENTRY_SIZE);
+        if (!disk_file && !disk_file.eof()) {
+            fs_log(("fs_check_integrity ERROR: Could not read FileInfo entry " + std::to_string(i) + ".").c_str());
+            is_consistent = false; issues_found++;
+            disk_file.close();
+            return;
+        }
+    }
+
+    // 2. Bitmap'i oku
+    char bitmap[BITMAP_SIZE_BYTES];
+    disk_file.seekg(BITMAP_START_OFFSET_IN_METADATA, std::ios::beg);
+    disk_file.read(bitmap, BITMAP_SIZE_BYTES);
+    if (!disk_file) {
+        fs_log("fs_check_integrity ERROR: Could not read bitmap.");
+        is_consistent = false; issues_found++;
+        disk_file.close();
+        return;
+    }
+    disk_file.close(); // Disk okumaları tamamlandı.
+
+    // Kontrol 1: Superblock'taki aktif dosya sayısı ile FileInfo'lardaki sayının tutarlılığı
+    int active_files_in_fileinfo = 0;
+    for (int i = 0; i < MAX_FILES_CALCULATED; ++i) {
+        if (all_files_info[i].is_used) {
+            active_files_in_fileinfo++;
+        }
+    }
+    if (sb.num_active_files != active_files_in_fileinfo) {
+        fs_log(("fs_check_integrity WARNING: Superblock active files count (" + std::to_string(sb.num_active_files) + 
+               ") does not match count from FileInfo entries (" + std::to_string(active_files_in_fileinfo) + ").").c_str());
+        is_consistent = false; issues_found++;
+    }
+
+    // Kontrol 2: Her aktif FileInfo'nun kendi iç tutarlılığı ve Bitmap ile tutarlılığı
+    std::vector<bool> block_usage_tracker(NUM_DATA_BLOCKS, false); // Hangi blokların FileInfo'lar tarafından kullanıldığını izler
+
+    for (int i = 0; i < MAX_FILES_CALCULATED; ++i) {
+        if (all_files_info[i].is_used) {
+            const FileInfo& fi = all_files_info[i];
+            std::string filename_str(fi.name);
+
+            // a. Boyut ve blok kullanımı
+            if (fi.size > 0 && (fi.num_data_blocks_used == 0 || fi.start_data_block_index == -1)) {
+                fs_log(("fs_check_integrity WARNING: File '" + filename_str + "' has size " + std::to_string(fi.size) +
+                       " but no data blocks allocated (num_blocks: " + std::to_string(fi.num_data_blocks_used) +
+                       ", start_block: " + std::to_string(fi.start_data_block_index) + ").").c_str());
+                is_consistent = false; issues_found++;
+            }
+            if (fi.size == 0 && (fi.num_data_blocks_used != 0 || fi.start_data_block_index != -1)) {
+                 fs_log(("fs_check_integrity WARNING: File '" + filename_str + "' has size 0 but data blocks seem allocated (num_blocks: " +
+                        std::to_string(fi.num_data_blocks_used) + ", start_block: " + std::to_string(fi.start_data_block_index) + "). Should be 0 and -1.").c_str());
+                is_consistent = false; issues_found++;
+            }
+
+            // b. Gerekli blok sayısı ile tahsis edilen blok sayısının tutarlılığı
+            if (fi.size > 0) {
+                unsigned int expected_blocks = (fi.size + BLOCK_SIZE_BYTES - 1) / BLOCK_SIZE_BYTES;
+                if (fi.num_data_blocks_used != expected_blocks) {
+                    fs_log(("fs_check_integrity WARNING: File '" + filename_str + "' size " + std::to_string(fi.size) +
+                           " requires " + std::to_string(expected_blocks) + " blocks, but FileInfo states " +
+                           std::to_string(fi.num_data_blocks_used) + " blocks are used.").c_str());
+                    is_consistent = false; issues_found++;
+                }
+            }
+
+            // c. Blok indekslerinin geçerliliği ve Bitmap ile tutarlılığı
+            if (fi.num_data_blocks_used > 0) {
+                if (fi.start_data_block_index < 0 || 
+                    static_cast<unsigned int>(fi.start_data_block_index) + fi.num_data_blocks_used > NUM_DATA_BLOCKS) {
+                    fs_log(("fs_check_integrity WARNING: File '" + filename_str + "' has invalid block range (start: " +
+                           std::to_string(fi.start_data_block_index) + ", num: " + std::to_string(fi.num_data_blocks_used) + ").").c_str());
+                    is_consistent = false; issues_found++;
+                } else {
+                    for (unsigned int k = 0; k < fi.num_data_blocks_used; ++k) {
+                        unsigned int current_block_idx = fi.start_data_block_index + k;
+                        unsigned int byte_idx = current_block_idx / 8;
+                        unsigned int bit_idx = current_block_idx % 8;
+
+                        if (!(bitmap[byte_idx] & bit_to_char_mask(bit_idx))) {
+                            fs_log(("fs_check_integrity WARNING: File '" + filename_str + "' uses block " +
+                                   std::to_string(current_block_idx) + ", but bitmap marks it as free.").c_str());
+                            is_consistent = false; issues_found++;
+                        }
+                        if (block_usage_tracker[current_block_idx]) {
+                            fs_log(("fs_check_integrity WARNING: Block " + std::to_string(current_block_idx) +
+                                   " is marked as used by multiple FileInfo entries (e.g., '" + filename_str + "').").c_str());
+                            is_consistent = false; issues_found++;
+                        }
+                        block_usage_tracker[current_block_idx] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // Kontrol 3: Bitmap'teki "dolu" blokların FileInfo'lar tarafından kullanılıp kullanılmadığı
+    for (unsigned int block_idx = 0; block_idx < NUM_DATA_BLOCKS; ++block_idx) {
+        unsigned int byte_idx = block_idx / 8;
+        unsigned int bit_idx = block_idx % 8;
+        bool bitmap_is_set = (bitmap[byte_idx] & bit_to_char_mask(bit_idx));
+
+        if (bitmap_is_set && !block_usage_tracker[block_idx]) {
+            fs_log(("fs_check_integrity WARNING: Bitmap marks block " + std::to_string(block_idx) +
+                   " as used, but no FileInfo entry claims it (lost block).").c_str());
+            is_consistent = false; issues_found++;
+        }
+        if (!bitmap_is_set && block_usage_tracker[block_idx]) {
+            // Bu durum zaten Kontrol 2.c.ii'de yakalanmış olmalı (FileInfo kullanıyor ama bitmap boş diyor)
+            // Yine de bir güvenlik olarak eklenebilir veya oradaki log mesajı buraya taşınabilir.
+            fs_log(("fs_check_integrity WARNING: Bitmap marks block " + std::to_string(block_idx) +
+                   " as free, but a FileInfo entry claims it (bitmap inconsistency - should have been caught earlier).").c_str());
+            is_consistent = false; issues_found++;
+        }
+    }
+
+    if (is_consistent) {
+        fs_log("File system integrity check passed. No issues found.");
+    } else {
+        fs_log(("File system integrity check FAILED. Issues found: " + std::to_string(issues_found)).c_str());
+    }
+    // Fonksiyon bir bool döndürmüyor, sadece logluyor.
+}
