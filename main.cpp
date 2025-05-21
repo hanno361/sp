@@ -3,6 +3,7 @@
 #include <vector>   // Tahsis edilen blokları takip etmek için
 #include <algorithm> // std::find için
 #include <set>      // Benzersiz blokları saymak için
+#include <fstream>  // std::fstream için eklendi
 
 // Bitmap testleri için fs.hpp'den bazı sabitlere erişim gerekebilir
 // Eğer fs.hpp içinde değillerse, burada tanımlamamız veya fs.hpp'ye eklememiz gerekebilir.
@@ -618,7 +619,7 @@ void test_file_cat_operations() {
     std::cout << "  ACTION: fs_cat(\"" << file_content_cat << "\") çağrılıyor. Beklenen çıktı:" << std::endl;
     std::cout << "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv" << std::endl;
     std::cout << content_cat; // Beklenen çıktıyı önce yazdırıyoruz
-    std::cout << "ʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌ" << std::endl;
+    std::cout << "ʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌʌ" << std::endl;
     std::cout << "  fs_cat çıktısı:" << std::endl;
     std::cout << "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv" << std::endl;
     fs_cat(file_content_cat);
@@ -757,21 +758,695 @@ void test_file_delete_operations() {
     std::cout << "\n--- Dosya Silme İşlemleri Testleri Tamamlandı ---" << std::endl;
 }
 
-int main() {
-    // Dosya sistemini başlat (bu, disk yoksa fs_format'ı çağıracak)
-    fs_init(); 
+void test_file_rename_operations() {
+    std::cout << "\n--- Dosya Yeniden Adlandırma İşlemleri Testleri Başlıyor ---" << std::endl;
 
-    std::cout << "\nSimpleFS initialized." << std::endl;
-    // std::cout << "Please check the output of fs_format (if called) to see metadata parameters." << std::endl;
+    // Test Hazırlığı: Yeniden adlandırmak için dosyalar oluşturalım
+    fs_format();
+    const char* file_orig_1 = "original_name1.txt";
+    const char* file_orig_2 = "another_file.txt";
+    const char* content_orig = "This is some content.";
+
+    std::cout << "  Hazırlık: Test dosyaları oluşturuluyor..." << std::endl;
+    fs_create(file_orig_1);
+    fs_write(file_orig_1, content_orig, strlen(content_orig));
+    fs_create(file_orig_2);
+    fs_write(file_orig_2, content_orig, strlen(content_orig));
+
+    std::cout << "  Hazırlık sonrası dosya listesi:" << std::endl;
+    fs_ls();
+
+    // Test 1: Başarılı yeniden adlandırma
+    const char* new_name_1 = "renamed_file1.txt";
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 1: Başarılı Yeniden Adlandırma ('" << file_orig_1 << "' -> '" << new_name_1 << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_rename(\"" << file_orig_1 << "\", \"" << new_name_1 << "\") çağrılıyor..." << std::endl;
+    fs_rename(file_orig_1, new_name_1);
+    std::cout << "  Yeniden adlandırma sonrası '" << file_orig_1 << "' var mı? (fs_exists): " << (fs_exists(file_orig_1) ? "EVET (HATA!)" : "HAYIR (Doğru)") << std::endl;
+    std::cout << "  Yeniden adlandırma sonrası '" << new_name_1 << "' var mı? (fs_exists): " << (fs_exists(new_name_1) ? "EVET (Doğru)" : "HAYIR (HATA!)") << std::endl;
+    std::cout << "  Boyut kontrolü ('" << new_name_1 << "'): " << fs_size(new_name_1) << " (Beklenen: " << strlen(content_orig) << ")" << std::endl;
+    std::cout << "  Test 1 sonrası dosya listesi:" << std::endl;
+    fs_ls();
+
+    // Test 2: Var olmayan dosyayı yeniden adlandırmaya çalışma
+    const char* non_existent_old = "idontexist_old.txt";
+    const char* non_existent_new = "idontexist_new.txt";
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 2: Var Olmayan Dosyayı Yeniden Adlandırma ('" << non_existent_old << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_rename(\"" << non_existent_old << "\", \"" << non_existent_new << "\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_rename(non_existent_old, non_existent_new);
+    std::cout << "  Test 2 sonrası dosya listesi (değişmemeli):" << std::endl;
+    fs_ls();
+
+    // Test 3: Hedef dosya adı zaten var
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 3: Hedef Dosya Adı Zaten Var ('" << new_name_1 << "' -> '" << file_orig_2 << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_rename(\"" << new_name_1 << "\", \"" << file_orig_2 << "\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_rename(new_name_1, file_orig_2);
+    std::cout << "  Yeniden adlandırma sonrası '" << new_name_1 << "' hala var mı? (fs_exists): " << (fs_exists(new_name_1) ? "EVET (Doğru)" : "HAYIR (HATA!)") << std::endl;
+    std::cout << "  Test 3 sonrası dosya listesi (değişmemeli):" << std::endl;
+    fs_ls();
+
+    // Test 4: Geçersiz eski dosya adı (nullptr)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 4: Geçersiz Eski Dosya Adı (nullptr)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_rename(nullptr, \"valid_new_name.txt\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_rename(nullptr, "valid_new_name.txt");
+
+    // Test 5: Geçersiz yeni dosya adı (boş string)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 5: Geçersiz Yeni Dosya Adı (Boş String)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_rename(\"" << new_name_1 << "\", \"\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_rename(new_name_1, "");
+
+    // Test 6: Çok uzun yeni dosya adı
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 6: Çok Uzun Yeni Dosya Adı]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    char long_name[MAX_FILENAME_LENGTH + 5];
+    for(int k=0; k < MAX_FILENAME_LENGTH + 4; ++k) long_name[k] = 'L';
+    long_name[MAX_FILENAME_LENGTH + 4] = '\0';
+    std::cout << "  ACTION: fs_rename(\"" << new_name_1 << "\", [çok_uzun_isim]) çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_rename(new_name_1, long_name);
+
+    // Test 7: Eski ve yeni ad aynı
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 7: Eski ve Yeni Ad Aynı ('" << new_name_1 << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_rename(\"" << new_name_1 << "\", \"" << new_name_1 << "\") çağrılıyor... Beklenen: Bilgi mesajı, değişiklik yok." << std::endl;
+    fs_rename(new_name_1, new_name_1);
+    std::cout << "  Sonrasında '" << new_name_1 << "' hala var mı? (fs_exists): " << (fs_exists(new_name_1) ? "EVET (Doğru)" : "HAYIR (HATA!)") << std::endl;
+    std::cout << "  Test 7 sonrası dosya listesi:" << std::endl;
+    fs_ls();
+
+    std::cout << "\n--- Dosya Yeniden Adlandırma İşlemleri Testleri Tamamlandı ---" << std::endl;
+}
+
+void test_file_append_operations() {
+    std::cout << "\n--- Dosya Ekleme İşlemleri Testleri Başlıyor ---" << std::endl;
+
+    // Test Hazırlığı
+    fs_format();
+    const char* file_append = "append_test.txt";
+    const char* initial_content = "Initial;";
+    int initial_size = strlen(initial_content);
+
+    std::cout << "  Hazırlık: '" << file_append << "' oluşturuluyor ve ilk veri yazılıyor..." << std::endl;
+    fs_create(file_append);
+    fs_write(file_append, initial_content, initial_size);
+    std::cout << "  Hazırlık sonrası durum:" << std::endl;
+    fs_ls();
+    fs_cat(file_append);
+    std::cout << std::endl;
+
+    // Test 1: Var olan dosyaya veri ekleme
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 1: Var Olan Dosyaya Veri Ekleme]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    const char* append_data1 = " Appended1.";
+    int append_size1 = strlen(append_data1);
+    std::cout << "  ACTION: fs_append(\"" << file_append << "\", \"" << append_data1 << "\", " << append_size1 << ") çağrılıyor..." << std::endl;
+    fs_append(file_append, append_data1, append_size1);
+    std::cout << "  Ekleme sonrası boyut: " << fs_size(file_append) << " (Beklenen: " << initial_size + append_size1 << ")" << std::endl;
+    std::cout << "  Ekleme sonrası içerik:" << std::endl;
+    fs_cat(file_append);
+    std::cout << std::endl;
+
+    // Test 2: Dosyaya birden fazla kez veri ekleme
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 2: Dosyaya Tekrar Veri Ekleme]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    const char* append_data2 = " Appended2_longer.";
+    int append_size2 = strlen(append_data2);
+    int expected_size_after_append2 = initial_size + append_size1 + append_size2;
+    std::cout << "  ACTION: fs_append(\"" << file_append << "\", \"" << append_data2 << "\", " << append_size2 << ") çağrılıyor..." << std::endl;
+    fs_append(file_append, append_data2, append_size2);
+    std::cout << "  İkinci ekleme sonrası boyut: " << fs_size(file_append) << " (Beklenen: " << expected_size_after_append2 << ")" << std::endl;
+    std::cout << "  İkinci ekleme sonrası içerik:" << std::endl;
+    fs_cat(file_append);
+    std::cout << std::endl;
+
+    // Test 3: Boş bir dosyaya veri ekleme
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 3: Boş Dosyaya Veri Ekleme]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    const char* empty_file_append = "empty_to_append.txt";
+    fs_create(empty_file_append);
+    std::cout << "  '" << empty_file_append << "' oluşturuldu (başlangıçta boş)." << std::endl;
+    const char* append_to_empty_data = "Content for empty file.";
+    int append_to_empty_size = strlen(append_to_empty_data);
+    std::cout << "  ACTION: fs_append(\"" << empty_file_append << "\", \"...\", " << append_to_empty_size << ") çağrılıyor..." << std::endl;
+    fs_append(empty_file_append, append_to_empty_data, append_to_empty_size);
+    std::cout << "  Boş dosyaya ekleme sonrası boyut: " << fs_size(empty_file_append) << " (Beklenen: " << append_to_empty_size << ")" << std::endl;
+    std::cout << "  Boş dosyaya ekleme sonrası içerik:" << std::endl;
+    fs_cat(empty_file_append);
+    std::cout << std::endl;
+
+    // Test 4: Var olmayan dosyaya ekleme denemesi
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 4: Var Olmayan Dosyaya Ekleme Denemesi]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    const char* non_existent_append = "idontexist_append.txt";
+    std::cout << "  ACTION: fs_append(\"" << non_existent_append << "\", \"data\", 4) çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_append(non_existent_append, "data", 4);
+
+    // Test 5: Boş veri ekleme (size 0)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 5: Boş Veri Ekleme (size 0)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    int size_before_empty_append = fs_size(file_append);
+    std::cout << "  ACTION: fs_append(\"" << file_append << "\", \"\", 0) çağrılıyor..." << std::endl;
+    fs_append(file_append, "", 0); // fs_append size 0 için bir şey yapmamalı
+    std::cout << "  Boş veri ekleme sonrası boyut: " << fs_size(file_append) << " (Beklenen: " << size_before_empty_append << ")" << std::endl;
+    std::cout << "  İçerik değişmemeli:" << std::endl;
+    fs_cat(file_append);
+    std::cout << std::endl;
     
-    // test_bitmap_functions();
-    // test_file_write_operations();
-    // test_file_read_operations(); 
-    // test_file_cat_operations(); // Bir önceki test fonksiyonu çağrısı yorum satırı yapıldı.
-    test_file_delete_operations(); // Yeni test fonksiyonu çağrısı
+    // Test 6: Nullptr data ile ekleme (size > 0)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 6: Null Data ile Ekleme (size > 0)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_append(\"" << file_append << "\", nullptr, 5) çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_append(file_append, nullptr, 5);
 
-    // fs_create, fs_ls gibi diğer fonksiyonlar yeni metadata yapısıyla uyumlu hale getirildikten sonra
-    // onların testleri buraya eklenebilir. Şimdilik sadece bitmap testleri.
+    // Test 7: Blok sınırını aşacak şekilde ekleme (yeni blok tahsisi gerekebilir)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 7: Yeni Blok Tahsisi Gerektirecek Ekleme]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    fs_format(); // Temiz bir disk ile başlayalım
+    const char* file_block_span = "block_span_append.txt";
+    char initial_block_data[BLOCK_SIZE_BYTES - 20]; // Bloğun sonuna yakın bir veri
+    memset(initial_block_data, 'A', sizeof(initial_block_data) -1 );
+    initial_block_data[sizeof(initial_block_data)-1] = '\0';
+    int initial_block_size = strlen(initial_block_data);
+
+    fs_create(file_block_span);
+    fs_write(file_block_span, initial_block_data, initial_block_size);
+    std::cout << "  '" << file_block_span << "' oluşturuldu, ilk boyut: " << fs_size(file_block_span) << std::endl;
+    
+    char append_block_data[40]; // Bu ekleme yeni blok gerektirmeli
+    memset(append_block_data, 'B', sizeof(append_block_data) -1);
+    append_block_data[sizeof(append_block_data)-1] = '\0';
+    int append_block_size = strlen(append_block_data);
+    int expected_total_size = initial_block_size + append_block_size;
+
+    std::cout << "  ACTION: fs_append(\"" << file_block_span << "\", \"...BBBB...\", " << append_block_size << ") çağrılıyor..." << std::endl;
+    fs_append(file_block_span, append_block_data, append_block_size);
+    std::cout << "  Blok aşan ekleme sonrası boyut: " << fs_size(file_block_span) << " (Beklenen: " << expected_total_size << ")" << std::endl;
+    std::cout << "  Blok aşan ekleme sonrası içerik:" << std::endl;
+    // fs_cat(file_block_span); // Çıktı çok uzun olabilir, sadece boyutu kontrol edelim
+    // İçeriği kontrol etmek için bir fs_read ve strncmp/memcmp yapılabilir.
+    char* read_buffer = new char[expected_total_size + 1];
+    fs_read(file_block_span, 0, expected_total_size, read_buffer);
+    if (strncmp(read_buffer, initial_block_data, initial_block_size) == 0 && 
+        strncmp(read_buffer + initial_block_size, append_block_data, append_block_size) == 0) {
+        std::cout << "    [SUCCESS] Blok aşan eklemenin içeriği doğru." << std::endl;
+    } else {
+        std::cout << "    [FAILURE] Blok aşan eklemenin içeriği YANLIŞ!" << std::endl;
+        //std::cout << "Okunan: '" << read_buffer << "'" << std::endl; // Debug için
+    }
+    delete[] read_buffer;
+
+    std::cout << "\n--- Dosya Ekleme İşlemleri Testleri Tamamlandı ---" << std::endl;
+}
+
+void test_file_truncate_operations() {
+    std::cout << "\n--- Dosya Kesme (Truncate) İşlemleri Testleri Başlıyor ---" << std::endl;
+
+    // Test Hazırlığı
+    fs_format();
+    const char* file_truncate = "truncate_test.txt";
+    const char* original_content = "This is the original content for truncate."; // 39 byte
+    int original_size = strlen(original_content);
+
+    std::cout << "  Hazırlık: '" << file_truncate << "' oluşturuluyor ve orijinal veri yazılıyor..." << std::endl;
+    fs_create(file_truncate);
+    fs_write(file_truncate, original_content, original_size);
+    std::cout << "  Hazırlık sonrası durum (Boyut: " << fs_size(file_truncate) << ")):" << std::endl;
+    fs_cat(file_truncate);
+    std::cout << std::endl;
+
+    // Test 1: Dosyayı daha küçük bir boyuta kesme (shrink)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 1: Dosyayı Daha Küçük Boyuta Kesme (Shrink)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    int shrink_size = 10;
+    std::cout << "  ACTION: fs_truncate(\"" << file_truncate << "\", " << shrink_size << ") çağrılıyor..." << std::endl;
+    fs_truncate(file_truncate, shrink_size);
+    std::cout << "  Kesme sonrası boyut: " << fs_size(file_truncate) << " (Beklenen: " << shrink_size << ")" << std::endl;
+    std::cout << "  Kesme sonrası içerik:" << std::endl;
+    fs_cat(file_truncate);
+    std::cout << std::endl;
+    // İçerik kontrolü
+    char* read_buffer_shrink = new char[shrink_size + 1];
+    fs_read(file_truncate, 0, shrink_size, read_buffer_shrink);
+    read_buffer_shrink[shrink_size] = '\0';
+    if (strncmp(read_buffer_shrink, original_content, shrink_size) == 0) {
+        std::cout << "    [SUCCESS] Küçültülen dosyanın içeriği doğru (ilk " << shrink_size << " byte)." << std::endl;
+    } else {
+        std::cout << "    [FAILURE] Küçültülen dosyanın içeriği YANLIŞ! Okunan: '" << read_buffer_shrink << "'" << std::endl;
+    }
+    delete[] read_buffer_shrink;
+
+    // Test 2: Dosyayı 0 boyutuna kesme (empty)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 2: Dosyayı 0 Boyutuna Kesme (Empty)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    // Önce dosyaya tekrar orijinal içeriği yazalım, bir önceki testten etkilenmesin.
+    fs_write(file_truncate, original_content, original_size); 
+    std::cout << "  Yeniden hazırlık sonrası boyut: " << fs_size(file_truncate) << std::endl;
+    int zero_size = 0;
+    std::cout << "  ACTION: fs_truncate(\"" << file_truncate << "\", " << zero_size << ") çağrılıyor..." << std::endl;
+    fs_truncate(file_truncate, zero_size);
+    std::cout << "  0'a kesme sonrası boyut: " << fs_size(file_truncate) << " (Beklenen: " << zero_size << ")" << std::endl;
+    std::cout << "  0'a kesme sonrası içerik (boş olmalı):" << std::endl;
+    fs_cat(file_truncate); // Boş çıktı vermeli
+    std::cout << std::endl;
+
+    // Test 3: Dosyayı mevcut boyutuyla aynı boyuta kesme (no change)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 3: Dosyayı Mevcut Boyutuna Kesme (Değişiklik Yok)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    fs_write(file_truncate, original_content, original_size); // Tekrar orijinal içerik
+    std::cout << "  Yeniden hazırlık sonrası boyut: " << fs_size(file_truncate) << " (" << original_size << ")" << std::endl;
+    std::cout << "  ACTION: fs_truncate(\"" << file_truncate << "\", " << original_size << ") çağrılıyor..." << std::endl;
+    fs_truncate(file_truncate, original_size);
+    std::cout << "  Aynı boyuta kesme sonrası boyut: " << fs_size(file_truncate) << " (Beklenen: " << original_size << ")" << std::endl;
+    std::cout << "  Aynı boyuta kesme sonrası içerik (değişmemeli):" << std::endl;
+    fs_cat(file_truncate);
+    std::cout << std::endl;
+
+    // Test 4: Dosyayı daha büyük bir boyuta "büyütme" (expand)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 4: Dosyayı Daha Büyük Boyuta Kesme (Expand)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    fs_write(file_truncate, original_content, original_size); // Tekrar orijinal içerik
+    int expand_size = original_size + 20;
+    std::cout << "  Yeniden hazırlık sonrası boyut: " << fs_size(file_truncate) << std::endl;
+    std::cout << "  ACTION: fs_truncate(\"" << file_truncate << "\", " << expand_size << ") çağrılıyor..." << std::endl;
+    fs_truncate(file_truncate, expand_size);
+    std::cout << "  Büyütme sonrası boyut: " << fs_size(file_truncate) << " (Beklenen: " << expand_size << ")" << std::endl;
+    // İçerik kontrolü: ilk kısım orijinal olmalı, geri kalan sıfır olmalı.
+    char* read_buffer_expand = new char[expand_size + 1];
+    fs_read(file_truncate, 0, expand_size, read_buffer_expand);
+    read_buffer_expand[expand_size] = '\0';
+    bool content_ok = true;
+    if (strncmp(read_buffer_expand, original_content, original_size) != 0) {
+        content_ok = false;
+        std::cout << "    [FAILURE] Büyütülen dosyanın ilk kısmı orijinal içerikle eşleşmiyor!" << std::endl;
+    }
+    for (int i = original_size; i < expand_size; ++i) {
+        if (read_buffer_expand[i] != 0) {
+            content_ok = false;
+            std::cout << "    [FAILURE] Büyütülen dosyanın eklenen kısmı sıfır değil! Index " << i << " = " << (int)read_buffer_expand[i] << std::endl;
+            break;
+        }
+    }
+    if (content_ok) {
+        std::cout << "    [SUCCESS] Büyütülen dosyanın içeriği doğru (orijinal + sıfırlar)." << std::endl;
+    }
+    // std::cout << "  Büyütme sonrası tam içerik (kontrol için):" << std::endl;
+    // for(int i=0; i<expand_size; ++i) { std::cout << (read_buffer_expand[i] ? read_buffer_expand[i] : '0'); }
+    // std::cout << std::endl;
+    delete[] read_buffer_expand;
+    std::cout << "  Büyütme sonrası cat çıktısı:" << std::endl;
+    fs_cat(file_truncate);
+    std::cout << std::endl;
+
+    // Test 5: Var olmayan dosyayı kesmeye çalışma
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 5: Var Olmayan Dosyayı Kesme Denemesi]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    const char* non_existent_truncate = "idontexist_truncate.txt";
+    std::cout << "  ACTION: fs_truncate(\"" << non_existent_truncate << "\", 10) çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_truncate(non_existent_truncate, 10);
+
+    // Test 6: Negatif boyutla kesmeye çalışma
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 6: Negatif Boyutla Kesme Denemesi]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_truncate(\"" << file_truncate << "\", -5) çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_truncate(file_truncate, -5);
+
+    std::cout << "\n--- Dosya Kesme (Truncate) İşlemleri Testleri Tamamlandı ---" << std::endl;
+}
+
+void test_file_copy_operations() {
+    std::cout << "\n--- Dosya Kopyalama İşlemleri Testleri Başlıyor ---" << std::endl;
+
+    // Test Hazırlığı
+    fs_format();
+    const char* src_file_copy = "source_copy.txt";
+    const char* dest_file_copy = "dest_copy.txt";
+    const char* content_copy = "This is the content to be copied.";
+    int content_size_copy = strlen(content_copy);
+
+    std::cout << "  Hazırlık: Kaynak dosya ('" << src_file_copy << "') oluşturuluyor ve veri yazılıyor..." << std::endl;
+    fs_create(src_file_copy);
+    fs_write(src_file_copy, content_copy, content_size_copy);
+    std::cout << "  Hazırlık sonrası kaynak dosya durumu:" << std::endl;
+    fs_ls();
+    std::cout << "  Kaynak dosya ('" << src_file_copy << "') içeriği: ";
+    fs_cat(src_file_copy);
+    std::cout << std::endl;
+
+    // Test 1: Başarılı Kopyalama
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 1: Başarılı Kopyalama ('" << src_file_copy << "' -> '" << dest_file_copy << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_copy(\"" << src_file_copy << "\", \"" << dest_file_copy << "\") çağrılıyor..." << std::endl;
+    fs_copy(src_file_copy, dest_file_copy);
+    std::cout << "  Kopyalama sonrası '" << dest_file_copy << "' var mı? (fs_exists): " << (fs_exists(dest_file_copy) ? "EVET" : "HAYIR") << " (Beklenen: EVET)" << std::endl;
+    std::cout << "  Hedef dosya boyutu ('" << dest_file_copy << "'): " << fs_size(dest_file_copy) << " (Beklenen: " << content_size_copy << ")" << std::endl;
+    std::cout << "  Hedef dosya ('" << dest_file_copy << "') içeriği: ";
+    fs_cat(dest_file_copy);
+    std::cout << std::endl;
+    std::cout << "  Test 1 sonrası dosya listesi:" << std::endl; fs_ls();
+
+    // Test 2: Kaynak Dosya Yok
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 2: Kaynak Dosya Yok ('non_existent_src.txt')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    const char* non_existent_src = "non_existent_src.txt";
+    const char* dest_for_non_existent = "dest_non_existent.txt";
+    std::cout << "  ACTION: fs_copy(\"" << non_existent_src << "\", \"" << dest_for_non_existent << "\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_copy(non_existent_src, dest_for_non_existent);
+    std::cout << "  Kopyalama sonrası '" << dest_for_non_existent << "' var mı? (fs_exists): " << (fs_exists(dest_for_non_existent) ? "EVET" : "HAYIR") << " (Beklenen: HAYIR)" << std::endl;
+    std::cout << "  Test 2 sonrası dosya listesi (değişmemeli):" << std::endl; fs_ls();
+
+    // Test 3: Hedef Dosya Zaten Var
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 3: Hedef Dosya Zaten Var ('" << dest_file_copy << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    const char* another_src = "another_src_for_copy.txt";
+    std::cout << "  Hazırlık: Ek kaynak dosya ('" << another_src << "') oluşturuluyor..." << std::endl;
+    fs_create(another_src);
+    fs_write(another_src, "dummy data", 10);
+    std::cout << "  ACTION: fs_copy(\"" << another_src << "\", \"" << dest_file_copy << "\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_copy(another_src, dest_file_copy); // dest_file_copy bir önceki testten dolayı var
+    std::cout << "  Hedef dosya ('" << dest_file_copy << "') boyutu değişmemeli: " << fs_size(dest_file_copy) << " (Beklenen: " << content_size_copy << ")" << std::endl;
+    std::cout << "  Test 3 sonrası dosya listesi:" << std::endl; fs_ls();
+    fs_delete(another_src); // Temizlik
+
+    // Test 4: Boş Dosya Kopyalama
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 4: Boş Dosya Kopyalama]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    fs_format(); // Diski temizle
+    const char* empty_src_file = "empty_src.txt";
+    const char* dest_for_empty = "dest_empty.txt";
+    std::cout << "  Hazırlık: Boş kaynak dosya ('" << empty_src_file << "') oluşturuluyor..." << std::endl;
+    fs_create(empty_src_file);
+    std::cout << "  Hazırlık sonrası dosya listesi:" << std::endl; fs_ls();
+    std::cout << "  ACTION: fs_copy(\"" << empty_src_file << "\", \"" << dest_for_empty << "\") çağrılıyor..." << std::endl;
+    fs_copy(empty_src_file, dest_for_empty);
+    std::cout << "  Kopyalama sonrası '" << dest_for_empty << "' var mı? (fs_exists): " << (fs_exists(dest_for_empty) ? "EVET" : "HAYIR") << " (Beklenen: EVET)" << std::endl;
+    std::cout << "  Hedef dosya boyutu ('" << dest_for_empty << "'): " << fs_size(dest_for_empty) << " (Beklenen: 0)" << std::endl;
+    std::cout << "  Test 4 sonrası dosya listesi:" << std::endl; fs_ls();
+
+    // Test 5: Kaynak ve Hedef Aynı İsim
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 5: Kaynak ve Hedef Aynı İsim]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    fs_format();
+    const char* same_name_file = "samenamed.txt";
+    std::cout << "  Hazırlık: Dosya ('" << same_name_file << "') oluşturuluyor..." << std::endl;
+    fs_create(same_name_file);
+    fs_write(same_name_file, "test data", 9);
+    std::cout << "  ACTION: fs_copy(\"" << same_name_file << "\", \"" << same_name_file << "\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_copy(same_name_file, same_name_file);
+    std::cout << "  Test 5 sonrası dosya listesi (değişmemeli):" << std::endl; fs_ls();
+
+    // Test 6: Geçersiz Dosya Adları (Null, Boş, Çok Uzun)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 6: Geçersiz Dosya Adları ile Kopyalama Denemeleri]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    fs_format();
+    const char* valid_src_for_invalid = "valid_src_inv.txt";
+    fs_create(valid_src_for_invalid);
+    fs_write(valid_src_for_invalid, "data", 4);
+
+    std::cout << "  ACTION: fs_copy(nullptr, \"dest.txt\") ... Beklenen: Hata." << std::endl;
+    fs_copy(nullptr, "dest.txt");
+    std::cout << "  ACTION: fs_copy(\"" << valid_src_for_invalid << "\", nullptr) ... Beklenen: Hata." << std::endl;
+    fs_copy(valid_src_for_invalid, nullptr);
+    std::cout << "  ACTION: fs_copy(\"\", \"dest.txt\") ... Beklenen: Hata." << std::endl;
+    fs_copy("", "dest.txt");
+    std::cout << "  ACTION: fs_copy(\"" << valid_src_for_invalid << "\", \"\") ... Beklenen: Hata." << std::endl;
+    fs_copy(valid_src_for_invalid, "");
+    
+    char long_name[MAX_FILENAME_LENGTH + 5];
+    memset(long_name, 'L', MAX_FILENAME_LENGTH + 4);
+    long_name[MAX_FILENAME_LENGTH + 4] = '\0';
+    std::cout << "  ACTION: fs_copy(\"" << valid_src_for_invalid << "\", [çok_uzun_isim]) ... Beklenen: Hata." << std::endl;
+    fs_copy(valid_src_for_invalid, long_name);
+    std::cout << "  ACTION: fs_copy([çok_uzun_isim], \"dest.txt\") ... Beklenen: Hata." << std::endl;
+    fs_copy(long_name, "dest.txt");
+    std::cout << "  Test 6 sonrası dosya listesi:" << std::endl; fs_ls();
+
+
+    // Test 7: Disk Dolu Senaryosu (Kopyalama sırasında yer kalmaması)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 7: Disk Dolu İken Kopyalama Denemesi]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    fs_format();
+    // Diski MAX_FILES ile dolduralım ama sonuncusuna büyük bir dosya için yer bırakalım
+    std::cout << "  Hazırlık: Diski MAX_FILES-1 kadar küçük dosyayla doldurma..." << std::endl;
+    for (int i = 0; i < MAX_FILES_CALCULATED - 1; ++i) {
+        std::string fname = "fill_" + std::to_string(i) + ".txt";
+        fs_create(fname.c_str());
+        fs_write(fname.c_str(), "s", 1); // Küçük dosyalar
+    }
+    std::cout << "  Mevcut dosya sayısı: " << fs_count_active_files() << std::endl; 
+    fs_ls();
+
+    // Büyük bir kaynak dosya oluşturalım (kalan tek slota sığmayacak kadar büyük değil, ama birden fazla blok gerektirecek)
+    const char* large_src_file = "large_source.txt";
+    fs_create(large_src_file);
+    unsigned int approx_half_block_size = BLOCK_SIZE_BYTES / 2 - 10; // Tek bir blokta kalacak şekilde. Değişken adı düzeltildi.
+    char* large_data_1 = new char[approx_half_block_size +1];
+    memset(large_data_1, 'A', approx_half_block_size);
+    large_data_1[approx_half_block_size] = '\0';
+    fs_write(large_src_file, large_data_1, approx_half_block_size);
+    std::cout << "  Büyük kaynak dosya ('" << large_src_file << "') oluşturuldu, boyutu: " << fs_size(large_src_file) << std::endl;
+    fs_ls();
+    
+    // Diskteki kalan boş blok sayısını azaltmak için bir dosya daha oluşturalım (MAX_FILES'a ulaşmadan)
+    // Bu aşamada MAX_FILES-1 + 1 = MAX_FILES dosya var. Superblock'ta yer kalmadı.
+    // fs_copy yeni dosya oluşturacağı için bu test doğrudan MAX_FILES limitine takılacak.
+
+    const char* copy_target_disk_full = "copy_target_df.txt";
+    std::cout << "  ACTION: fs_copy(\"" << large_src_file << "\", \"" << copy_target_disk_full << "\") çağrılıyor... Beklenen: Hata (MAX_FILES limiti)." << std::endl;
+    fs_copy(large_src_file, copy_target_disk_full);
+    std::cout << "  Kopyalama sonrası '" << copy_target_disk_full << "' var mı? " << (fs_exists(copy_target_disk_full) ? "EVET" : "HAYIR") << " (Beklenen: HAYIR)" << std::endl;
+    fs_ls();
+    delete[] large_data_1;
+
+    // Şimdi MAX_FILES'ı geçmeyecek ama veri blokları yetmeyecek bir senaryo:
+    std::cout << "\n  Hazırlık: Diski tek bir büyük dosya ile doldurma (veri blokları için)..." << std::endl;
+    fs_format();
+    const char* very_large_src = "very_large_src.txt";
+    fs_create(very_large_src);
+    // Neredeyse tüm veri bloklarını dolduracak bir boyut
+    unsigned int size_to_fill_most_blocks = (NUM_DATA_BLOCKS - 2) * BLOCK_SIZE_BYTES; // Son birkac blok kalsin
+    char* fill_data = new char[size_to_fill_most_blocks];
+    memset(fill_data, 'F', size_to_fill_most_blocks);
+    fs_write(very_large_src, fill_data, size_to_fill_most_blocks);
+    std::cout << "  Çok büyük kaynak ('" << very_large_src << "') oluşturuldu, boyutu: " << fs_size(very_large_src) << ", blok: " << fs_get_num_blocks_used(very_large_src) << std::endl;
+    delete[] fill_data;
+    fs_ls();
+
+    const char* small_src_for_copy = "small_src_copy.txt";
+    fs_create(small_src_for_copy);
+    fs_write(small_src_for_copy, "12345678901234567890123456789012345678901234567890", 50); // 1 blok
+    std::cout << "  Küçük kaynak ('" << small_src_for_copy << "') oluşturuldu, boyutu: " << fs_size(small_src_for_copy) << ", blok: " << fs_get_num_blocks_used(small_src_for_copy) << std::endl;
+    fs_ls();
+
+    const char* copy_target_no_blocks = "copy_target_noblocks.txt";
+    std::cout << "  ACTION: fs_copy(\"" << small_src_for_copy << "\", \"" << copy_target_no_blocks << "\") çağrılıyor... Beklenen: Hata (Disk dolu - veri blokları yetersiz)." << std::endl;
+    fs_copy(small_src_for_copy, copy_target_no_blocks);
+    std::cout << "  Kopyalama sonrası '" << copy_target_no_blocks << "' var mı? " << (fs_exists(copy_target_no_blocks) ? "EVET" : "HAYIR") << " (Beklenen: HAYIR)" << std::endl;
+    fs_ls();
+
+
+    std::cout << "\n--- Dosya Kopyalama İşlemleri Testleri Tamamlandı ---" << std::endl;
+}
+
+void test_file_move_operations() {
+    std::cout << "\n--- Dosya Taşıma/Yeniden Adlandırma (fs_mv) İşlemleri Testleri Başlıyor ---" << std::endl;
+
+    // Test Hazırlığı: Taşımak/yeniden adlandırmak için dosyalar oluşturalım
+    fs_format();
+    const char* file_mv_orig_1 = "original_for_mv1.txt";
+    const char* file_mv_orig_2 = "another_for_mv.txt";
+    const char* content_mv = "Content for fs_mv test.";
+
+    std::cout << "  Hazırlık: Test dosyaları oluşturuluyor..." << std::endl;
+    fs_create(file_mv_orig_1);
+    fs_write(file_mv_orig_1, content_mv, strlen(content_mv));
+    fs_create(file_mv_orig_2);
+    fs_write(file_mv_orig_2, content_mv, strlen(content_mv));
+
+    std::cout << "  Hazırlık sonrası dosya listesi:" << std::endl;
+    fs_ls();
+
+    // Test 1: Başarılı taşıma/yeniden adlandırma
+    const char* new_path_1 = "moved_file1.txt";
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 1: Başarılı Taşıma ('" << file_mv_orig_1 << "' -> '" << new_path_1 << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_mv(\"" << file_mv_orig_1 << "\", \"" << new_path_1 << "\") çağrılıyor..." << std::endl;
+    fs_mv(file_mv_orig_1, new_path_1);
+    std::cout << "  Taşıma sonrası '" << file_mv_orig_1 << "' var mı? (fs_exists): " << (fs_exists(file_mv_orig_1) ? "EVET (HATA!)" : "HAYIR (Doğru)") << std::endl;
+    std::cout << "  Taşıma sonrası '" << new_path_1 << "' var mı? (fs_exists): " << (fs_exists(new_path_1) ? "EVET (Doğru)" : "HAYIR (HATA!)") << std::endl;
+    std::cout << "  Boyut kontrolü ('" << new_path_1 << "'): " << fs_size(new_path_1) << " (Beklenen: " << strlen(content_mv) << ")" << std::endl;
+    std::cout << "  Test 1 sonrası dosya listesi:" << std::endl;
+    fs_ls();
+
+    // Test 2: Var olmayan kaynak yolu
+    const char* non_existent_old_mv = "idontexist_old_mv.txt";
+    const char* non_existent_new_mv = "idontexist_new_mv.txt";
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 2: Var Olmayan Kaynak Yolu ('" << non_existent_old_mv << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_mv(\"" << non_existent_old_mv << "\", \"" << non_existent_new_mv << "\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_mv(non_existent_old_mv, non_existent_new_mv);
+    std::cout << "  Test 2 sonrası dosya listesi (değişmemeli):" << std::endl;
+    fs_ls();
+
+    // Test 3: Hedef yol zaten var
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 3: Hedef Yol Zaten Var ('" << new_path_1 << "' -> '" << file_mv_orig_2 << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_mv(\"" << new_path_1 << "\", \"" << file_mv_orig_2 << "\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_mv(new_path_1, file_mv_orig_2);
+    std::cout << "  Taşıma denemesi sonrası '" << new_path_1 << "' hala var mı? (fs_exists): " << (fs_exists(new_path_1) ? "EVET (Doğru)" : "HAYIR (HATA!)") << std::endl;
+    std::cout << "  Test 3 sonrası dosya listesi (değişmemeli):" << std::endl;
+    fs_ls();
+
+    // Test 4: Geçersiz eski yol (nullptr)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 4: Geçersiz Eski Yol (nullptr)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_mv(nullptr, \"valid_new_path.txt\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_mv(nullptr, "valid_new_path.txt");
+
+    // Test 5: Geçersiz yeni yol (boş string)
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 5: Geçersiz Yeni Yol (Boş String)]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_mv(\"" << new_path_1 << "\", \"\") çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_mv(new_path_1, "");
+
+    // Test 6: Çok uzun yeni yol
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 6: Çok Uzun Yeni Yol]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    char long_path_mv[MAX_FILENAME_LENGTH + 5];
+    for(int k=0; k < MAX_FILENAME_LENGTH + 4; ++k) long_path_mv[k] = 'P';
+    long_path_mv[MAX_FILENAME_LENGTH + 4] = '\0';
+    std::cout << "  ACTION: fs_mv(\"" << new_path_1 << "\", [çok_uzun_yol]) çağrılıyor... Beklenen: Hata." << std::endl;
+    fs_mv(new_path_1, long_path_mv);
+
+    // Test 7: Eski ve yeni yol aynı
+    std::cout << "\n-----------------------------------------------------" << std::endl;
+    std::cout << "[Test 7: Eski ve Yeni Yol Aynı ('" << new_path_1 << "')]" << std::endl;
+    std::cout << "-----------------------------------------------------" << std::endl;
+    std::cout << "  ACTION: fs_mv(\"" << new_path_1 << "\", \"" << new_path_1 << "\") çağrılıyor... Beklenen: Bilgi mesajı, değişiklik yok." << std::endl;
+    fs_mv(new_path_1, new_path_1);
+    std::cout << "  Sonrasında '" << new_path_1 << "' hala var mı? (fs_exists): " << (fs_exists(new_path_1) ? "EVET (Doğru)" : "HAYIR (HATA!)") << std::endl;
+    std::cout << "  Test 7 sonrası dosya listesi:" << std::endl;
+    fs_ls();
+
+    std::cout << "\n--- Dosya Taşıma/Yeniden Adlandırma (fs_mv) İşlemleri Testleri Tamamlandı ---" << std::endl;
+}
+
+void test_defragmentation() {
+    std::cout << "\n--- Disk Birleştirme (Defragmentation) Testleri Başlıyor ---" << std::endl;
+
+    fs_format();
+    const char* fileA = "defrag_A.txt";
+    const char* contentA = "Content for file A (defrag)";
+    const char* fileB = "defrag_B_to_delete.txt";
+    const char* contentB = "Content for B, will be deleted";
+    const char* fileC = "defrag_C.txt";
+    const char* contentC = "Content for file C (defrag)";
+
+    std::cout << "  Hazırlık: Dosyalar oluşturuluyor..." << std::endl;
+    fs_create(fileA); fs_write(fileA, contentA, strlen(contentA));
+    fs_create(fileB); fs_write(fileB, contentB, strlen(contentB));
+    fs_create(fileC); fs_write(fileC, contentC, strlen(contentC));
+
+    std::cout << "\n  Durum (Defrag Öncesi - fileB oluşturulduktan sonra):" << std::endl;
+    fs_ls();
+    std::cout << "    " << fileA << " start_block: " << fs_get_file_info_debug(fileA).start_data_block_index << " num_blocks: " << fs_get_file_info_debug(fileA).num_data_blocks_used << std::endl;
+    std::cout << "    " << fileB << " start_block: " << fs_get_file_info_debug(fileB).start_data_block_index << " num_blocks: " << fs_get_file_info_debug(fileB).num_data_blocks_used << std::endl;
+    std::cout << "    " << fileC << " start_block: " << fs_get_file_info_debug(fileC).start_data_block_index << " num_blocks: " << fs_get_file_info_debug(fileC).num_data_blocks_used << std::endl;
+
+    std::cout << "\n  ACTION: '" << fileB << "' siliniyor (fragmentasyon oluşturmak için)..." << std::endl;
+    fs_delete(fileB);
+
+    std::cout << "\n  Durum (Defrag Öncesi - fileB silindikten sonra):" << std::endl;
+    fs_ls();
+    std::cout << "    " << fileA << " start_block: " << fs_get_file_info_debug(fileA).start_data_block_index << " num_blocks: " << fs_get_file_info_debug(fileA).num_data_blocks_used << std::endl;
+    // fileB silindiği için fs_get_file_info_debug(fileB) çağrılmamalı.
+    std::cout << "    " << fileC << " start_block: " << fs_get_file_info_debug(fileC).start_data_block_index << " num_blocks: " << fs_get_file_info_debug(fileC).num_data_blocks_used << std::endl;
+
+    std::cout << "\n  ACTION: fs_defragment() çağrılıyor..." << std::endl;
+    fs_defragment();
+
+    std::cout << "\n  Durum (Defrag Sonrası):" << std::endl;
+    fs_ls();
+    std::cout << "    " << fileA << " yeni start_block: " << fs_get_file_info_debug(fileA).start_data_block_index << " num_blocks: " << fs_get_file_info_debug(fileA).num_data_blocks_used << std::endl;
+    std::cout << "    " << fileC << " yeni start_block: " << fs_get_file_info_debug(fileC).start_data_block_index << " num_blocks: " << fs_get_file_info_debug(fileC).num_data_blocks_used << std::endl;
+
+    std::cout << "\n  İçerik Kontrolü (Defrag Sonrası):" << std::endl;
+    std::cout << "    '" << fileA << "' içeriği: "; fs_cat(fileA); std::cout << std::endl;
+    std::cout << "    Beklenen A: " << contentA << std::endl;
+    std::cout << "    '" << fileC << "' içeriği: "; fs_cat(fileC); std::cout << std::endl;
+    std::cout << "    Beklenen C: " << contentC << std::endl;
+
+    char bufferA[100];
+    char bufferC[100];
+    fs_read(fileA, 0, strlen(contentA), bufferA);
+    fs_read(fileC, 0, strlen(contentC), bufferC);
+
+    if (strcmp(bufferA, contentA) == 0) {
+        std::cout << "    [SUCCESS] '" << fileA << "' içeriği doğru." << std::endl;
+    } else {
+        std::cout << "    [FAILURE] '" << fileA << "' içeriği yanlış! Okunan: '" << bufferA << "'" << std::endl;
+    }
+    if (strcmp(bufferC, contentC) == 0) {
+        std::cout << "    [SUCCESS] '" << fileC << "' içeriği doğru." << std::endl;
+    } else {
+        std::cout << "    [FAILURE] '" << fileC << "' içeriği yanlış! Okunan: '" << bufferC << "'" << std::endl;
+    }
+
+    std::cout << "\n--- Disk Birleştirme (Defragmentation) Testleri Tamamlandı ---" << std::endl;
+}
+
+int main() {
+    fs_init();      // Dosya sistemini başlat
+    std::cout << std::endl;
+    fs_init();      // Tekrar başlatmayı dene (disk zaten var olmalı)
+    std::cout << std::endl;
+
+    // test_bitmap_functions(); 
+    // test_file_write_operations();
+    // test_file_read_operations();
+    // test_file_cat_operations();
+    // test_file_delete_operations();
+    // test_file_rename_operations();
+    // test_file_append_operations();
+    // test_file_truncate_operations();
+    // test_file_copy_operations();
+    test_file_move_operations();
+    test_defragmentation();
 
     std::cout << "\nProgramdan çıkılıyor." << std::endl;
     return 0;

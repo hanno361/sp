@@ -58,20 +58,20 @@ Bu proje, C++ dilinde sistem çağrıları kullanılarak basit bir dosya sistemi
 ### Aşama 4: Gelişmiş Dosya İşlemleri
 - [ ] `fs_delete(char* filename)`: Dosyayı silme ve alanı boş olarak işaretleme.
     - [ ] Test Edildi
-- [ ] `fs_rename(char* old_name, char* new_name)`: Dosya ismini değiştirme.
-    - [ ] Test Edildi
-- [ ] `fs_append(char* filename, char* data, int size)`: Dosyanın sonuna veri ekleme.
-    - [ ] Test Edildi
-- [ ] `fs_truncate(char* filename, int new_size)`: Dosya içeriğini kesme/küçültme.
-    - [ ] Test Edildi
+- [x] `fs_rename(char* old_name, char* new_name)`: Dosya ismini değiştirme.
+    - [x] Test Edildi
+- [x] `fs_append(char* filename, char* data, int size)`: Dosyanın sonuna veri ekleme.
+    - [x] Test Edildi
+- [x] `fs_truncate(char* filename, int new_size)`: Dosya içeriğini kesme/küçültme.
+    - [x] Test Edildi
 - [ ] `fs_copy(char* src_filename, char* dest_filename)`: Dosya kopyalama.
-    - [ ] Test Edildi
+    - [x] Test Edildi
 
 ### Aşama 5: Disk Yönetimi ve Yardımcı Fonksiyonlar (İleri Seviye)
-- [ ] `fs_mv(char* old_path, char* new_path)`: Dosya taşıma (Dizin desteği eklendiğinde anlamlı olacak, şimdilik ertelenebilir veya basit bir yeniden adlandırma olarak düşünülebilir).
-    - [ ] Test Edildi
-- [ ] `fs_defragment()`: Diskteki boş alanları birleştirme (Opsiyonel/İleri seviye).
-    - [ ] Test Edildi
+- [x] `fs_mv(char* old_path, char* new_path)`: Dosya taşıma (Dizin desteği eklendiğinde anlamlı olacak, şimdilik ertelenebilir veya basit bir yeniden adlandırma olarak düşünülebilir).
+    - [x] Test Edildi
+- [x] `fs_defragment()`: Diskteki boş alanları birleştirme (Opsiyonel/İleri seviye).
+    - [x] Test Edildi
 - [ ] `fs_check_integrity()`: Metadata ve veri blokları tutarlılığını kontrol etme.
     - [ ] Test Edildi
 - [ ] `fs_backup(char* backup_filename)`: Disk yedeği alma.

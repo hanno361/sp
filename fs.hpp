@@ -77,7 +77,7 @@ int fs_size(const char* filename);
 void fs_append(const char* filename, const char* data, int size);
 void fs_truncate(const char* filename, int new_size);
 void fs_copy(const char* src_filename, const char* dest_filename);
-void fs_mv(const char* old_path, const char* new_path); // Şimdilik fs_rename gibi davranabilir
+void fs_mv(const char* old_path, const char* new_path);
 void fs_defragment();
 void fs_check_integrity();
 void fs_backup(const char* backup_filename);
@@ -86,9 +86,17 @@ void fs_cat(const char* filename);
 bool fs_diff(const char* file1, const char* file2);
 void fs_log(const char* message); // Loglama için basit bir fonksiyon
 
+// Debug/Test için yardımcı fonksiyon
+FileInfo fs_get_file_info_debug(const char* filename);
+
 // Bitmap Yönetimi Yardımcı Fonksiyonları
 int find_free_data_block();
 void free_data_block(int block_index);
 int find_and_allocate_contiguous_data_blocks(int num_blocks_to_find);
+
+// Diğer Yardımcı Fonksiyonlar (Metadata okuma vb.)
+std::vector<FileInfo> read_all_file_info(Superblock& sb_out); // Superblock bilgisini de döndürür/günceller
+int fs_count_active_files(); // Aktif dosya sayısını Superblock'tan okur
+int fs_get_num_blocks_used(const char* filename); // Dosyanın kullandığı blok sayısını FileInfo'dan okur
 
 #endif // FS_HPP 
